@@ -7,6 +7,7 @@ using Orleans.Configuration;
 using Orleans.Hosting;
 using Orleans.Providers.Streams.Common;
 using Orleans.Runtime;
+using Orleans.Streaming;
 using Orleans.Streams;
 
 namespace RabbitMqStreamTests
@@ -128,8 +129,9 @@ namespace RabbitMqStreamTests
                             options.GetQueueMsgsTimerPeriod = TimeSpan.FromMilliseconds(100);
                         }));
                 })
-                .AddRabbitMqStream<ProtoBufBatchContainerSerializer>(Globals.StreamProviderNameProtoBuf, configurator =>
+                .AddRabbitMqStream(Globals.StreamProviderNameProtoBuf, configurator =>
                 {
+                    configurator.UseSerializer<ProtoBufBatchContainerSerializer>();
                     configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.RmqProxyPort,
                         virtualHost: "/", user: "guest", password: "guest", queueName: Globals.StreamNameSpaceProtoBuf);
                     configurator.ConfigureCache(cacheSize: 100, cacheFillingTimeout: TimeSpan.FromSeconds(10));
@@ -155,8 +157,9 @@ namespace RabbitMqStreamTests
                     configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.RmqProxyPort,
                         virtualHost: "/", user: "guest", password: "guest", queueName: Globals.StreamNameSpaceDefault);
                 })
-                .AddRabbitMqStream<ProtoBufBatchContainerSerializer>(Globals.StreamProviderNameProtoBuf, configurator =>
+                .AddRabbitMqStream(Globals.StreamProviderNameProtoBuf, configurator =>
                 {
+                    configurator.UseSerializer<ProtoBufBatchContainerSerializer>();
                     configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.RmqProxyPort,
                         virtualHost: "/", user: "guest", password: "guest", queueName: Globals.StreamNameSpaceProtoBuf);
                 })

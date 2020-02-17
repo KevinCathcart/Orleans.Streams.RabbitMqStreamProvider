@@ -3,13 +3,14 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Orleans.Configuration;
+using Orleans.Runtime;
 using Orleans.Serialization;
 using Orleans.Streams.BatchContainer;
 using Orleans.Streams.Cache;
 
 namespace Orleans.Streams
 {
-    public class RabbitMqAdapterFactory<TSerializer> : IQueueAdapterFactory where TSerializer : IBatchContainerSerializer, new()
+    public class RabbitMqAdapterFactory : IQueueAdapterFactory
     {
         private readonly IQueueAdapterCache _cache;
         private readonly IStreamQueueMapper _mapper;
@@ -33,9 +34,8 @@ namespace Orleans.Streams
             _mapper = new HashRingBasedStreamQueueMapper(new HashRingStreamQueueMapperOptions { TotalQueueCount = rmqOptions.NumberOfQueues }, rmqOptions.QueueNamePrefix);
             _failureHandler = Task.FromResult<IStreamFailureHandler>(new NoOpStreamDeliveryFailureHandler(false));
 
-            var serializer = typeof(TSerializer) == typeof(DefaultBatchContainerSerializer)
-                ? new DefaultBatchContainerSerializer(serviceProvider.GetRequiredService<SerializationManager>())
-                : (IBatchContainerSerializer)new TSerializer();
+            var serializer = serviceProvider.GetServiceByName<IBatchContainerSerializer>(providerName) ??
+                new DefaultBatchContainerSerializer(serviceProvider.GetRequiredService<SerializationManager>());
 
             _adapter = new RabbitMqAdapter(rmqOptions, cachingOptions, serializer, _mapper, providerName, loggerFactory);
         }
@@ -45,8 +45,8 @@ namespace Orleans.Streams
         public IQueueAdapterCache GetQueueAdapterCache() => _cache;
         public IStreamQueueMapper GetStreamQueueMapper() => _mapper;
 
-        public static RabbitMqAdapterFactory<TSerializer> Create(IServiceProvider services, string name)
-            => ActivatorUtilities.CreateInstance<RabbitMqAdapterFactory<TSerializer>>(
+        public static RabbitMqAdapterFactory Create(IServiceProvider services, string name)
+            => ActivatorUtilities.CreateInstance<RabbitMqAdapterFactory>(
                 services,
                 name,
                 services.GetOptionsByName<RabbitMqOptions>(name),

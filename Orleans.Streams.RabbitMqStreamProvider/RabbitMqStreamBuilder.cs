@@ -2,16 +2,29 @@
 using Microsoft.Extensions.DependencyInjection;
 using Orleans.Configuration;
 using Orleans.Hosting;
+using Orleans.Runtime;
 using Orleans.Streams;
 using Orleans.Streams.BatchContainer;
 
 namespace Orleans.Streaming
 {
-    public class SiloRabbitMqStreamConfigurator<TSerializer> : SiloPersistentStreamConfigurator
-        where TSerializer : IBatchContainerSerializer, new()
+    public interface IRabbitMqStreamConfigurator : INamedServiceConfigurator { }
+
+    public static class RabbitMqStreamConfiguratorExtensions
+    {
+        public static void UseSerializer<TSerializer>(this IRabbitMqStreamConfigurator configurator) where TSerializer : class, IBatchContainerSerializer
+        {
+            configurator.ConfigureDelegate(services =>
+            {
+                services.AddTransientNamedService<IBatchContainerSerializer, TSerializer>(configurator.Name);
+            });
+        }
+    }
+
+    public class SiloRabbitMqStreamConfigurator : SiloPersistentStreamConfigurator, IRabbitMqStreamConfigurator
     {
         public SiloRabbitMqStreamConfigurator(string name, Action<Action<IServiceCollection>> configureDelegate)
-            : base(name, configureDelegate, RabbitMqAdapterFactory<TSerializer>.Create)
+            : base(name, configureDelegate, RabbitMqAdapterFactory.Create)
         {
             ConfigureDelegate(services =>
                 {
@@ -22,7 +35,7 @@ namespace Orleans.Streaming
                 });
         }
 
-        public SiloRabbitMqStreamConfigurator<TSerializer> ConfigureRabbitMq(string host, int port, string virtualHost, string user, string password, string queueName, bool useQueuePartitioning = RabbitMqOptions.DefaultUseQueuePartitioning, int numberOfQueues = RabbitMqOptions.DefaultNumberOfQueues)
+        public SiloRabbitMqStreamConfigurator ConfigureRabbitMq(string host, int port, string virtualHost, string user, string password, string queueName, bool useQueuePartitioning = RabbitMqOptions.DefaultUseQueuePartitioning, int numberOfQueues = RabbitMqOptions.DefaultNumberOfQueues)
         {
             this.Configure<RabbitMqOptions>(ob => ob.Configure(options =>
                 {
@@ -38,13 +51,13 @@ namespace Orleans.Streaming
             return this;
         }
 
-        public SiloRabbitMqStreamConfigurator<TSerializer> ConfigureCache(int cacheSize)
+        public SiloRabbitMqStreamConfigurator ConfigureCache(int cacheSize)
         {
             this.Configure<CachingOptions>(ob => ob.Configure(options => options.CacheSize = cacheSize));
             return this;
         }
 
-        public SiloRabbitMqStreamConfigurator<TSerializer> ConfigureCache(int cacheSize, TimeSpan cacheFillingTimeout)
+        public SiloRabbitMqStreamConfigurator ConfigureCache(int cacheSize, TimeSpan cacheFillingTimeout)
         {
             this.Configure<CachingOptions>(ob => ob.Configure(options =>
                 {
@@ -55,14 +68,13 @@ namespace Orleans.Streaming
         }
     }
 
-    public class ClusterClientRabbitMqStreamConfigurator<TSerializer> : ClusterClientPersistentStreamConfigurator
-        where TSerializer : IBatchContainerSerializer, new()
+    public class ClusterClientRabbitMqStreamConfigurator : ClusterClientPersistentStreamConfigurator, IRabbitMqStreamConfigurator
     {
         public ClusterClientRabbitMqStreamConfigurator(string name, IClientBuilder builder)
-            : base(name, builder, RabbitMqAdapterFactory<TSerializer>.Create)
+            : base(name, builder, RabbitMqAdapterFactory.Create)
         {
             builder
-                .ConfigureApplicationParts(parts => parts.AddFrameworkPart(typeof(RabbitMqAdapterFactory<TSerializer>).Assembly))
+                .ConfigureApplicationParts(parts => parts.AddFrameworkPart(typeof(RabbitMqAdapterFactory).Assembly))
                 .ConfigureServices(services => services
                     .ConfigureNamedOptionForLogging<RabbitMqOptions>(name)
                     .AddTransient<IConfigurationValidator>(sp => new RabbitMqOptionsValidator(sp.GetOptionsByName<RabbitMqOptions>(name), name))
@@ -70,7 +82,7 @@ namespace Orleans.Streaming
 
         }
 
-        public ClusterClientRabbitMqStreamConfigurator<TSerializer> ConfigureRabbitMq(
+        public ClusterClientRabbitMqStreamConfigurator ConfigureRabbitMq(
             string host, int port, string virtualHost, string user, string password, string queueName,
             bool useQueuePartitioning = RabbitMqOptions.DefaultUseQueuePartitioning,
             int numberOfQueues = RabbitMqOptions.DefaultNumberOfQueues)
