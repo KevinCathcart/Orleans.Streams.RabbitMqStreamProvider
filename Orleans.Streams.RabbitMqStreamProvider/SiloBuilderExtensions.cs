@@ -1,5 +1,6 @@
 ﻿using System;
-using Orleans.Streaming;
+using Microsoft.Extensions.Options;
+using Orleans.Configuration;
 
 namespace Orleans.Hosting
 {
@@ -10,8 +11,18 @@ namespace Orleans.Hosting
         /// </summary>
         public static ISiloHostBuilder AddRabbitMqStream(this ISiloHostBuilder builder, string name, Action<SiloRabbitMqStreamConfigurator> configure)
         {
-            configure?.Invoke(new SiloRabbitMqStreamConfigurator(name, configDelegate => builder.ConfigureServices(configDelegate)));
+            var configurator = new SiloRabbitMqStreamConfigurator(name,
+                configureServicesDelegate => builder.ConfigureServices(configureServicesDelegate),
+                configureAppPartsDelegate => builder.ConfigureApplicationParts(configureAppPartsDelegate));
+            configure?.Invoke(configurator);
             return builder;
         }
+
+        /// <summary>
+        /// Configure silo to use RMQ persistent streams.
+        /// </summary>
+        public static ISiloHostBuilder AddRabbitMqStream(this ISiloHostBuilder builder, string name, Action<OptionsBuilder<RabbitMqOptions>> configureOptions)
+            => builder.AddRabbitMqStream(name, b => b.Configure(configureOptions));
+
     }
 }

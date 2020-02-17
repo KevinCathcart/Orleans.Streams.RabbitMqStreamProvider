@@ -1,5 +1,6 @@
 ﻿using System;
-using Orleans.Streaming;
+using Microsoft.Extensions.Options;
+using Orleans.Configuration;
 
 namespace Orleans.Hosting
 {
@@ -7,12 +8,19 @@ namespace Orleans.Hosting
     {
         /// <summary>
         /// Configure client to use RMQ persistent streams.
-        /// This version enables to inject a custom BacthContainer serializer.
         /// </summary>
         public static IClientBuilder AddRabbitMqStream(this IClientBuilder builder, string name, Action<ClusterClientRabbitMqStreamConfigurator> configure)
         {
-            configure?.Invoke(new ClusterClientRabbitMqStreamConfigurator(name, builder));
+            var configurator = new ClusterClientRabbitMqStreamConfigurator(name, builder);
+            configure?.Invoke(configurator);
             return builder;
         }
+
+        /// <summary>
+        /// Configure client to use RMQ persistent streams.
+        /// </summary>
+        public static IClientBuilder AddRabbitMqStream(this IClientBuilder builder, string name, Action<OptionsBuilder<RabbitMqOptions>> configureOptions)
+            => builder.AddRabbitMqStream(name, b => b.Configure(configureOptions));
+
     }
 }

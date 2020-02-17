@@ -5,8 +5,8 @@ namespace Orleans.Configuration
 {
     public class CachingOptions
     {
-        public int CacheSize = DefaultCacheSize;
-        public TimeSpan CacheFillingTimeout = DefaultCacheFillingTimeout;
+        public int CacheSize { get; set; } = DefaultCacheSize;
+        public TimeSpan CacheFillingTimeout { get; set; } = DefaultCacheFillingTimeout;
 
         public const int DefaultCacheSize = 4096;
         public static readonly TimeSpan DefaultCacheFillingTimeout = TimeSpan.FromSeconds(10);

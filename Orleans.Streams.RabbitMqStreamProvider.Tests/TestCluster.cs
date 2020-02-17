@@ -7,7 +7,6 @@ using Orleans.Configuration;
 using Orleans.Hosting;
 using Orleans.Providers.Streams.Common;
 using Orleans.Runtime;
-using Orleans.Streaming;
 using Orleans.Streams;
 
 namespace RabbitMqStreamTests
