@@ -50,7 +50,7 @@ namespace Orleans.Streams
             {
                 rmq = _queues.GetOrAdd(key, _rmqConnectorFactory.CreateProducer(queueId));
             }
-            rmq.Send(RabbitMqDataAdapter.ToQueueMessage(_serializer, streamGuid, streamNamespace, events, requestContext));
+            rmq.Send(string.Empty, _rmqConnectorFactory.GetNameForQueue(queueId), RabbitMqDataAdapter.ToQueueMessage(_serializer, streamGuid, streamNamespace, events, requestContext));
             return Task.CompletedTask;
         }
     }

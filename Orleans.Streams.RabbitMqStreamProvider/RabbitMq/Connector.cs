@@ -10,10 +10,13 @@ namespace Orleans.Streams.RabbitMq
     internal class RabbitMqConsumer : IRabbitMqConsumer
     {
         private readonly RabbitMqConnector _connection;
+        private readonly string _queueName;
 
-        public RabbitMqConsumer(RabbitMqConnector connection)
+        public RabbitMqConsumer(RabbitMqConnector connection, string queueName)
         {
             _connection = connection;
+            _connection.ModelCreated += OnModelCreated;
+            _queueName = queueName;
         }
 
         public void Dispose()
@@ -53,13 +56,18 @@ namespace Orleans.Streams.RabbitMq
         {
             try
             {
-                return _connection.Channel.BasicGet(_connection.QueueName, false);
+                return _connection.Channel.BasicGet(_queueName, false);
             }
             catch (Exception ex)
             {
                 _connection.Logger.LogError(ex, "RabbitMqConsumer: failed to call Get!");
                 return null;
             }
+        }
+
+        private void OnModelCreated(object sender, ModelCreatedEventArgs args)
+        {
+            args.Channel.QueueDeclare(_queueName, durable: true, exclusive: false, autoDelete: false, arguments: null);
         }
     }
 
@@ -77,7 +85,7 @@ namespace Orleans.Streams.RabbitMq
             _connection.Dispose();
         }
 
-        public void Send(byte[] message)
+        public void Send(string exchange, string routingKey, byte[] message)
         {
             try
             {
@@ -87,7 +95,7 @@ namespace Orleans.Streams.RabbitMq
                 basicProperties.MessageId = Guid.NewGuid().ToString();
                 basicProperties.DeliveryMode = 2;   // persistent
 
-                _connection.Channel.BasicPublish(string.Empty, _connection.QueueName, true, basicProperties, message);
+                _connection.Channel.BasicPublish(exchange, routingKey, true, basicProperties, message);
 
                 _connection.Channel.WaitForConfirmsOrDie(TimeSpan.FromSeconds(10));
             }
@@ -98,14 +106,24 @@ namespace Orleans.Streams.RabbitMq
         }
     }
 
+    public class ModelCreatedEventArgs
+    {
+        public IModel Channel { get; }
+        public ModelCreatedEventArgs(IModel channel)
+        {
+            Channel = channel;
+        }
+    }
+
     internal class RabbitMqConnector : IDisposable
     {
-        public readonly string QueueName;
         public readonly ILogger Logger;
 
         private readonly RabbitMqOptions _options;
         private IConnection _connection;
         private IModel _channel;
+
+        public event EventHandler<ModelCreatedEventArgs> ModelCreated;
 
         public IModel Channel
         {
@@ -116,13 +134,10 @@ namespace Orleans.Streams.RabbitMq
             }
         }
 
-        public RabbitMqConnector(RabbitMqOptions options, QueueId queueId, ILogger logger)
+        public RabbitMqConnector(RabbitMqOptions options, ILogger logger)
         {
             _options = options;
             Logger = logger;
-            QueueName = options.UseQueuePartitioning
-                ? $"{options.QueueNamePrefix}-{queueId.GetNumericId()}"
-                : options.QueueNamePrefix;
         }
 
         private void EnsureConnection()
@@ -153,7 +168,7 @@ namespace Orleans.Streams.RabbitMq
             {
                 Logger.LogDebug("Creating a model.");
                 _channel = _connection.CreateModel();
-                _channel.QueueDeclare(QueueName, durable: true, exclusive: false, autoDelete: false, arguments: null);
+                ModelCreated?.Invoke(this, new ModelCreatedEventArgs(_channel));
                 _channel.ConfirmSelect();   // manual (N)ACK
                 Logger.LogDebug("Model created.");
             }

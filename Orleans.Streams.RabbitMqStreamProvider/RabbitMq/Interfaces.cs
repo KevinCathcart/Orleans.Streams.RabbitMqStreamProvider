@@ -9,6 +9,7 @@ namespace Orleans.Streams.RabbitMq
         ILoggerFactory LoggerFactory { get; }
         IRabbitMqConsumer CreateConsumer(QueueId queueId);
         IRabbitMqProducer CreateProducer(QueueId queueId);
+        string GetNameForQueue(QueueId queueId);
     }
 
     internal interface IRabbitMqConsumer : IDisposable
@@ -20,6 +21,6 @@ namespace Orleans.Streams.RabbitMq
 
     internal interface IRabbitMqProducer : IDisposable
     {
-        void Send(byte[] message);
+        void Send(string exchange, string routingKey, byte[] message);
     }
 }
