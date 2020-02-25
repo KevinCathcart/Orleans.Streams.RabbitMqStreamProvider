@@ -1,12 +1,12 @@
 ﻿using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 using Orleans.ApplicationParts;
 using Orleans.Configuration;
 using Orleans.Runtime;
 using Orleans.Streams;
 using Orleans.Streams.BatchContainer;
+using Orleans.Streams.RabbitMq;
 
 namespace Orleans.Hosting
 {
@@ -23,6 +23,11 @@ namespace Orleans.Hosting
         }
 
         public static void ConfigureStreamQueueMapper(this IRabbitMqStreamConfigurator configurator, Func<IServiceProvider, string, IStreamQueueMapper> factory)
+        {
+            configurator.ConfigureComponent(factory);
+        }
+
+        public static void ConfigureTopologyProvider(this IRabbitMqStreamConfigurator configurator, Func<IServiceProvider, string, ITopologyProvider> factory)
         {
             configurator.ConfigureComponent(factory);
         }
@@ -74,6 +79,7 @@ namespace Orleans.Hosting
             this.ConfigureDelegate(services =>
             {
                 services.TryAddSingleton<IRabbitMqStreamQueueMapperFactory, RabbitMqStreamQueueMapperFactory>();
+                services.TryAddSingleton<ITopologyProviderFactory, TopologyProviderFactory>();
             });
         }
     }
@@ -92,6 +98,7 @@ namespace Orleans.Hosting
             this.ConfigureDelegate(services =>
             {
                 services.TryAddSingleton<IRabbitMqStreamQueueMapperFactory, RabbitMqStreamQueueMapperFactory>();
+                services.TryAddSingleton<ITopologyProviderFactory, TopologyProviderFactory>();
             });
 
         }

@@ -10,7 +10,6 @@ namespace Orleans.Streams.RabbitMq
         ILoggerFactory LoggerFactory { get; }
         IRabbitMqConsumer CreateConsumer(QueueId queueId);
         IRabbitMqProducer CreateProducer();
-        string GetNameForQueue(QueueId queueId);
     }
 
     internal interface IRabbitMqConsumer : IDisposable
@@ -23,5 +22,11 @@ namespace Orleans.Streams.RabbitMq
     internal interface IRabbitMqProducer : IDisposable
     {
         Task SendAsync(string exchange, string routingKey, byte[] message, bool shouldConfirm, bool persistent);
+    }
+
+    public interface ITopologyProvider
+    {
+        string GetNameForQueue(QueueId queueId);
+        RabbitMqQueueProperties GetQueueProperties(string queueName);
     }
 }

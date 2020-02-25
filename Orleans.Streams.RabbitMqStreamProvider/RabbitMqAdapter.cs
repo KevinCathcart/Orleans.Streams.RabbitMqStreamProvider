@@ -21,16 +21,18 @@ namespace Orleans.Streams
     {
         private readonly IBatchContainerSerializer _serializer;
         private readonly IStreamQueueMapper _mapper;
+        private readonly ITopologyProvider _topologyProvider;
         private readonly ThreadLocal<IRabbitMqProducer> _producer;
         private readonly IRabbitMqConnectorFactory _rmqConnectorFactory;
         private readonly TimeSpan _cacheFillingTimeout;
 
-        public RabbitMqAdapter(RabbitMqOptions rmqOptions, CachingOptions cachingOptions, IBatchContainerSerializer serializer, IStreamQueueMapper mapper, string providerName, ILoggerFactory loggerFactory)
+        public RabbitMqAdapter(RabbitMqOptions rmqOptions, CachingOptions cachingOptions, IBatchContainerSerializer serializer, IStreamQueueMapper mapper, string providerName, ILoggerFactory loggerFactory, ITopologyProvider topologyProvider)
         {
             _serializer = serializer;
             _mapper = mapper;
             Name = providerName;
-            _rmqConnectorFactory = new RabbitMqOnlineConnectorFactory(rmqOptions, loggerFactory);
+            _topologyProvider = topologyProvider;
+            _rmqConnectorFactory = new RabbitMqOnlineConnectorFactory(rmqOptions, loggerFactory, topologyProvider);
             _cacheFillingTimeout = cachingOptions.CacheFillingTimeout;
             _producer = new ThreadLocal<IRabbitMqProducer>(() => _rmqConnectorFactory.CreateProducer());
         }
@@ -45,8 +47,9 @@ namespace Orleans.Streams
             if (token != null) throw new ArgumentException("RabbitMq stream provider does not support non-null StreamSequenceToken.", nameof(token));
 
             var queueId = _mapper.GetQueueForStream(streamGuid, streamNamespace);
+            var queueName = _topologyProvider.GetNameForQueue(queueId);
 
-            await _producer.Value.SendAsync(string.Empty, _rmqConnectorFactory.GetNameForQueue(queueId), RabbitMqDataAdapter.ToQueueMessage(_serializer, streamGuid, streamNamespace, events, requestContext), shouldConfirm: true, persistent: true );
+            await _producer.Value.SendAsync(string.Empty, queueName, RabbitMqDataAdapter.ToQueueMessage(_serializer, streamGuid, streamNamespace, events, requestContext), shouldConfirm: true, persistent: true );
         }
     }
 }

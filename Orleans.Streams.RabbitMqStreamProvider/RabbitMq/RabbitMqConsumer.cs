@@ -8,13 +8,13 @@ namespace Orleans.Streams.RabbitMq
     internal class RabbitMqConsumer : IRabbitMqConsumer
     {
         private readonly RabbitMqConnector _connection;
-        private readonly string _queueName;
+        private readonly RabbitMqQueueProperties _queueProperties;
 
-        public RabbitMqConsumer(RabbitMqConnector connection, string queueName)
+        public RabbitMqConsumer(RabbitMqConnector connection, RabbitMqQueueProperties queueProperties)
         {
             _connection = connection;
             _connection.ModelCreated += OnModelCreated;
-            _queueName = queueName;
+            _queueProperties = queueProperties;
         }
 
         public void Dispose()
@@ -54,7 +54,7 @@ namespace Orleans.Streams.RabbitMq
         {
             try
             {
-                return _connection.Channel.BasicGet(_queueName, false);
+                return _connection.Channel.BasicGet(_queueProperties.Name, false);
             }
             catch (Exception ex)
             {
@@ -65,7 +65,15 @@ namespace Orleans.Streams.RabbitMq
 
         private void OnModelCreated(object sender, ModelCreatedEventArgs args)
         {
-            args.Channel.QueueDeclare(_queueName, durable: true, exclusive: false, autoDelete: false, arguments: null);
+            if (_queueProperties.ShouldDeclare)
+            {
+                args.Channel.QueueDeclare(
+                    _queueProperties.Name,
+                    _queueProperties.Durable,
+                    _queueProperties.Exclusive,
+                    _queueProperties.AutoDelete,
+                    _queueProperties.Arguments);
+            }
         }
     }
 }
