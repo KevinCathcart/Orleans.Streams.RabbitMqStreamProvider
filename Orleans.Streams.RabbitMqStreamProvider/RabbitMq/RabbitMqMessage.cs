@@ -13,6 +13,11 @@ namespace Orleans.Streams.RabbitMq
         // Publish only property:
         public bool ShouldConfirmPublish { get; set; } = true;
 
+        // Receive only properties:
+        public object Channel { get; set; }
+        public ulong DeliveryTag { get; set; }
+        public bool Redelivered { get; set; }
+
         // Basic properties:
         public string AppId { get; set; }
         public string ClusterId { get; set; }

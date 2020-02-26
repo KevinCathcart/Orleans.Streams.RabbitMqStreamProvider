@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using RabbitMQ.Client;
 
 namespace Orleans.Streams.RabbitMq
 {
@@ -14,9 +13,9 @@ namespace Orleans.Streams.RabbitMq
 
     internal interface IRabbitMqConsumer : IDisposable
     {
-        void Ack(ulong deliveryTag);
-        void Nack(ulong deliveryTag);
-        BasicGetResult Receive();
+        void Ack(object channel, ulong deliveryTag, bool multiple);
+        void Nack(object channel, ulong deliveryTag);
+        RabbitMqMessage Receive();
     }
 
     internal interface IRabbitMqProducer : IDisposable

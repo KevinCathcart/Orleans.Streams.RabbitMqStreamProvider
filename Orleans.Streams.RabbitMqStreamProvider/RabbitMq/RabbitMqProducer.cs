@@ -185,13 +185,13 @@ namespace Orleans.Streams.RabbitMq
 
                 cancellationTokenSource.Dispose();
                 producer.RemoveMessageInFlight(this);
-                taskCompletionSource.TrySetException(new IOException("Nack Received."));
+                taskCompletionSource.TrySetException(new RabbitMqException("RabbitMqProducer: Send failed!", new IOException("Nack Received.")));
             }
 
             public void Timeout()
             {
                 producer.RemoveMessageInFlight(this);
-                taskCompletionSource.TrySetException(new IOException("Timed out waiting for acks, during RabbitMq publication."));
+                taskCompletionSource.TrySetException(new RabbitMqException("RabbitMqProducer: Send failed!", new IOException("Timed out waiting for acks, during RabbitMq publication.")));
                 cancellationTokenSource.Dispose();
             }
 

@@ -16,8 +16,6 @@ namespace Orleans.Streams.BatchContainer
         public StreamSequenceToken SequenceToken => EventSequenceToken;
         public Guid StreamGuid { get; }
         public string StreamNamespace { get; }
-        public ulong DeliveryTag { get; set; }
-        public bool DeliveryFailure { get; set; }
 
         public RabbitMqBatchContainer(Guid streamGuid, string streamNamespace, List<object> events, Dictionary<string, object> requestContext)
         {
