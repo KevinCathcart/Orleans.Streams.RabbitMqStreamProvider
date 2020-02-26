@@ -34,7 +34,7 @@
 
   <ItemGroup>
     <None Update="bin-toxiproxy\toxiproxy-server-2.1.2-windows-amd64.exe">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 
