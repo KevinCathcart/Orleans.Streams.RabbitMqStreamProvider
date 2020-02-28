@@ -10,7 +10,7 @@ using Orleans.Streams.RabbitMq;
 namespace Orleans.Streams
 {
 
-    public abstract class RabbitMqDataAdapterBase: IQueueDataAdapter<RabbitMqMessage, IBatchContainer>
+    public abstract class RabbitMqDataAdapterBase: IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>>
     {
         private readonly IStreamQueueMapper _mapper;
         private readonly ITopologyProvider _topologyProvider;
@@ -21,13 +21,13 @@ namespace Orleans.Streams
             _topologyProvider = topologyProvider;
         }
 
-        public virtual IBatchContainer FromQueueMessage(RabbitMqMessage message, long sequenceId)
+        public virtual IEnumerable<IBatchContainer> FromQueueMessage(RabbitMqMessage message, long sequenceId)
         {
             message.RequeueOnFailure = true;
 
             var batchContainer = Deserialize(message.Body);
             batchContainer.EventSequenceToken = new EventSequenceToken(sequenceId);
-            return batchContainer;
+            return new[] { batchContainer };
         }
 
         public virtual RabbitMqMessage ToQueueMessage<T>(Guid streamGuid, string streamNamespace, IEnumerable<T> events, StreamSequenceToken token, Dictionary<string, object> requestContext)

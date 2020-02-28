@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orleans.ApplicationParts;
@@ -22,7 +23,7 @@ namespace Orleans.Hosting
             configurator.ConfigureComponent(factory);
         }
 
-        public static void ConfigureQueueDataAdapter(this IRabbitMqStreamConfigurator configurator, Func<IServiceProvider, string, IQueueDataAdapter<RabbitMqMessage, IBatchContainer>> factory)
+        public static void ConfigureQueueDataAdapter(this IRabbitMqStreamConfigurator configurator, Func<IServiceProvider, string, IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>>> factory)
         {
             configurator.ConfigureComponent(factory);
         }

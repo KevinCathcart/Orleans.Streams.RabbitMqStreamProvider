@@ -11,13 +11,14 @@ namespace Orleans.Streams
     {
         private readonly IRabbitMqConnectorFactory _rmqConnectorFactory;
         private readonly QueueId _queueId;
-        private readonly IQueueDataAdapter<RabbitMqMessage, IBatchContainer> _dataAdapter;
+        private readonly IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> _dataAdapter;
         private readonly ILogger _logger;
         private long _sequenceId;
         private IRabbitMqConsumer _consumer;
         private readonly List<PendingDelivery> pending;
+        private Queue<IBatchContainer> _currentGroup;
 
-        public RabbitMqAdapterReceiver(IRabbitMqConnectorFactory rmqConnectorFactory, QueueId queueId, IQueueDataAdapter<RabbitMqMessage, IBatchContainer> dataAdapter)
+        public RabbitMqAdapterReceiver(IRabbitMqConnectorFactory rmqConnectorFactory, QueueId queueId, IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> dataAdapter)
         {
             _rmqConnectorFactory = rmqConnectorFactory;
             _queueId = queueId;
@@ -25,6 +26,7 @@ namespace Orleans.Streams
             _logger = _rmqConnectorFactory.LoggerFactory.CreateLogger($"{typeof(RabbitMqAdapterReceiver).FullName}.{queueId}");
             _sequenceId = 0;
             pending = new List<PendingDelivery>();
+            _currentGroup = new Queue<IBatchContainer>();
         }
 
         public Task Initialize(TimeSpan timeout)
@@ -41,21 +43,56 @@ namespace Orleans.Streams
             var multibatch = new List<IBatchContainer>();
             for (int count = 0; count < maxCount || maxCount == QueueAdapterConstants.UNLIMITED_GET_QUEUE_MSG; count++)
             {
+                if (!await GetNextGroupIfNeeded(consumer))
+                {
+                    // Ran out of messages.
+                    break;
+                }
+
+                var batch = _currentGroup.Dequeue();
+                multibatch.Add(batch);
+            }
+
+            return multibatch;
+        }
+
+        private async Task<bool> GetNextGroupIfNeeded(IRabbitMqConsumer consumer)
+        {
+            // Repeat until we run out of messages, or we have set _currentGroup to a non-empty collection.
+            while (_currentGroup.Count == 0)
+            {
                 var item = await consumer.ReceiveAsync();
-                if (item == null) break;
+                if (item == null) return false;
+
+                Queue<IBatchContainer> batches;
                 try
                 {
-                    var batch = _dataAdapter.FromQueueMessage(item, _sequenceId++);
-                    multibatch.Add(batch);
-                    pending.Add(new PendingDelivery(batch.SequenceToken, item.DeliveryTag, item.Channel, item.RequeueOnFailure));
+                    batches = new Queue<IBatchContainer>(_dataAdapter.FromQueueMessage(item, _sequenceId++));
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "GetQueueMessagesAsync: failed to deserialize the message! The message will be thrown away.");
                     await consumer.NackAsync(item.Channel, item.DeliveryTag, requeue: false);
+                    continue;
                 }
+
+                if (batches.Count == 0)
+                {
+                    // If a RabbitMQ message maps to zero Orleans messages, then we can acknowledge it immediately.
+                    await consumer.AckAsync(item.Channel, item.DeliveryTag, multiple: false);
+                }
+                else
+                {
+                    foreach (var batch in batches)
+                    {
+                        pending.Add(new PendingDelivery(batch.SequenceToken, item.DeliveryTag, item.Channel, item.RequeueOnFailure));
+                    }
+                }
+
+                _currentGroup = batches;
             }
-            return multibatch;
+
+            return true;
         }
 
         public async Task MessagesDeliveredAsync(IList<IBatchContainer> messages)

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -43,7 +44,7 @@ namespace Orleans.Streams
 
             var topologyProvider = topologyProviderFactory.Get(providerName);
 
-            var dataAdapter = serviceProvider.GetServiceByName<IQueueDataAdapter<RabbitMqMessage, IBatchContainer>>(providerName) ??
+            var dataAdapter = serviceProvider.GetServiceByName<IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>>>(providerName) ??
                     RabbitMqDataAdapter.Create(serviceProvider, providerName);
 
             _adapter = new RabbitMqAdapter(rmqOptions, dataAdapter, providerName, loggerFactory, topologyProvider);

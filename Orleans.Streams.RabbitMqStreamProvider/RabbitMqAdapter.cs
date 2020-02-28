@@ -18,11 +18,11 @@ namespace Orleans.Streams
     /// </summary>
     internal class RabbitMqAdapter : IQueueAdapter
     {
-        private readonly IQueueDataAdapter<RabbitMqMessage, IBatchContainer> _dataAdapter;
-        private readonly ThreadLocal<IRabbitMqProducer> _producer;
+        private readonly IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> _dataAdapter;
+        private readonly ThreadLocal<IRabbitMqProducer> _producer; 
         private readonly IRabbitMqConnectorFactory _rmqConnectorFactory;
 
-        public RabbitMqAdapter(RabbitMqOptions rmqOptions, IQueueDataAdapter<RabbitMqMessage, IBatchContainer> dataAdapter, string providerName, ILoggerFactory loggerFactory, ITopologyProvider topologyProvider)
+        public RabbitMqAdapter(RabbitMqOptions rmqOptions, IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> dataAdapter, string providerName, ILoggerFactory loggerFactory, ITopologyProvider topologyProvider)
         {
             _dataAdapter = dataAdapter;
             Name = providerName;
