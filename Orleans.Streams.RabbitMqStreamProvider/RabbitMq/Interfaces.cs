@@ -8,7 +8,7 @@ namespace Orleans.Streams.RabbitMq
     {
         ILoggerFactory LoggerFactory { get; }
         IRabbitMqConsumer CreateConsumer(QueueId queueId);
-        IRabbitMqProducer CreateProducer(QueueId queueId);
+        IRabbitMqProducer CreateProducer();
         string GetNameForQueue(QueueId queueId);
     }
 
