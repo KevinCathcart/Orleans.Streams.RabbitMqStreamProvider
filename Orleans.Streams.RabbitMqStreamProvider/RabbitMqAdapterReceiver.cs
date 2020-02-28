@@ -51,8 +51,8 @@ namespace Orleans.Streams
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "GetQueueMessagesAsync: failed to deserialize the message! The message will be thrown away (by calling ACK).");
-                    await consumer.AckAsync(item.Channel, item.DeliveryTag, multiple: false);
+                    _logger.LogError(ex, "GetQueueMessagesAsync: failed to deserialize the message! The message will be thrown away.");
+                    await consumer.NackAsync(item.Channel, item.DeliveryTag, requeue: false);
                 }
             }
             return multibatch;
