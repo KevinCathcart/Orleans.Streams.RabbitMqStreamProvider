@@ -1,6 +1,7 @@
 ﻿using System;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 
 namespace Orleans.Streams.RabbitMq
 {
@@ -48,10 +49,16 @@ namespace Orleans.Streams.RabbitMq
                 _channel = _connectionProvider.Connection.CreateModel();
                 ModelCreated?.Invoke(this, new ModelCreatedEventArgs(_channel));
 
+                _channel.BasicAcks += (channel, args) => BasicAcks?.Invoke(channel, args);
+                _channel.BasicNacks += (channel, args) => BasicNacks?.Invoke(channel, args);
+
                 _channel.ConfirmSelect();   // manual (N)ACK
                 Logger.LogDebug("Model created.");
             }
         }
+
+        public event EventHandler<BasicAckEventArgs> BasicAcks;
+        public event EventHandler<BasicNackEventArgs> BasicNacks;
 
         public void Dispose()
         {

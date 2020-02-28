@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 
@@ -21,6 +22,6 @@ namespace Orleans.Streams.RabbitMq
 
     internal interface IRabbitMqProducer : IDisposable
     {
-        void Send(string exchange, string routingKey, byte[] message);
+        Task SendAsync(string exchange, string routingKey, byte[] message, bool shouldConfirm, bool persistent);
     }
 }

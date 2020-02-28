@@ -40,14 +40,13 @@ namespace Orleans.Streams
         public StreamProviderDirection Direction => StreamProviderDirection.ReadWrite;
         public IQueueAdapterReceiver CreateReceiver(QueueId queueId) => new RabbitMqAdapterReceiver(_rmqConnectorFactory, queueId, _serializer, _cacheFillingTimeout);
 
-        public Task QueueMessageBatchAsync<T>(Guid streamGuid, string streamNamespace, IEnumerable<T> events, StreamSequenceToken token, Dictionary<string, object> requestContext)
+        public async Task QueueMessageBatchAsync<T>(Guid streamGuid, string streamNamespace, IEnumerable<T> events, StreamSequenceToken token, Dictionary<string, object> requestContext)
         {
             if (token != null) throw new ArgumentException("RabbitMq stream provider does not support non-null StreamSequenceToken.", nameof(token));
 
             var queueId = _mapper.GetQueueForStream(streamGuid, streamNamespace);
 
-            _producer.Value.Send(string.Empty, _rmqConnectorFactory.GetNameForQueue(queueId), RabbitMqDataAdapter.ToQueueMessage(_serializer, streamGuid, streamNamespace, events, requestContext));
-            return Task.CompletedTask;
+            await _producer.Value.SendAsync(string.Empty, _rmqConnectorFactory.GetNameForQueue(queueId), RabbitMqDataAdapter.ToQueueMessage(_serializer, streamGuid, streamNamespace, events, requestContext), shouldConfirm: true, persistent: true );
         }
     }
 }
