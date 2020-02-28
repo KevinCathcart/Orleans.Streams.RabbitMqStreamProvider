@@ -14,7 +14,7 @@ namespace Orleans.Streams.RabbitMq
     internal interface IRabbitMqConsumer : IDisposable
     {
         Task AckAsync(object channel, ulong deliveryTag, bool multiple);
-        Task NackAsync(object channel, ulong deliveryTag);
+        Task NackAsync(object channel, ulong deliveryTag, bool requeue);
         Task<RabbitMqMessage> ReceiveAsync();
     }
 

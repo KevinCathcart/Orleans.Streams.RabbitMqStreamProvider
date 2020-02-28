@@ -47,7 +47,7 @@ namespace Orleans.Streams
                 {
                     var batch = _dataAdapter.FromQueueMessage(item, _sequenceId++);
                     multibatch.Add(batch);
-                    pending.Add(new PendingDelivery(batch.SequenceToken, item.DeliveryTag, item.Channel));
+                    pending.Add(new PendingDelivery(batch.SequenceToken, item.DeliveryTag, item.Channel, item.RequeueOnFailure));
                 }
                 catch (Exception ex)
                 {
@@ -81,17 +81,25 @@ namespace Orleans.Streams
             // remove all finalized deliveries from pending, regardless of if it was delivered or not.
             pending.RemoveRange(0, finalizedDeliveries.Count);
 
-            var groups = finalizedDeliveries.GroupBy(x => new { x.Channel, x.DeliveryTag });
+            var groups = finalizedDeliveries.GroupBy(x => new { x.Channel, x.DeliveryTag});
 
-            var groupsByDeliveryStatus = groups.ToLookup(g => g.All(m => deliveredTokens.Contains(m.Token)), g => g.Key);
+            var groupsByDeliveryStatus = groups.ToLookup(
+                g => g.All(m => deliveredTokens.Contains(m.Token)),
+                g => new
+                {
+                    g.Key.Channel,
+                    g.Key.DeliveryTag,
+                    // First is safe because and all messages in the same group will have the same value.
+                    RequeueOnFailure = g.First(m => m.RequeueOnFailure)
+                });
 
             var incompletelyDeliveredGroups = groupsByDeliveryStatus[false];
 
             // Nack any message groups that were not completely delivered
             foreach (var group in incompletelyDeliveredGroups)
             {
-                if (_logger.IsEnabled(LogLevel.Debug)) _logger.LogDebug($"MessagesDeliveredAsync NACK #{group.DeliveryTag}");
-                await consumer.NackAsync(group.Channel, group.DeliveryTag);
+                if (_logger.IsEnabled(LogLevel.Debug)) _logger.LogDebug("MessagesDeliveredAsync NACK #{deliveryTag} Requeue: {requeue}", group.DeliveryTag, group.RequeueOnFailure);
+                await consumer.NackAsync(group.Channel, group.DeliveryTag, true);
             }
 
             var fullyDeliveredGroups = groupsByDeliveryStatus[true];
@@ -141,16 +149,18 @@ namespace Orleans.Streams
 
         private class PendingDelivery
         {
-            public PendingDelivery(StreamSequenceToken token, ulong deliveryTag, object channel)
+            public PendingDelivery(StreamSequenceToken token, ulong deliveryTag, object channel, bool requeueOnFailure)
             {
                 this.Token = token;
                 this.DeliveryTag = deliveryTag;
                 this.Channel = channel;
+                this.RequeueOnFailure = requeueOnFailure;
             }
 
             public ulong DeliveryTag { get; }
             public object Channel { get; }
             public StreamSequenceToken Token { get; }
+            public bool RequeueOnFailure { get;}
         }
     }
 }

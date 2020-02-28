@@ -23,6 +23,8 @@ namespace Orleans.Streams
 
         public virtual IBatchContainer FromQueueMessage(RabbitMqMessage message, long sequenceId)
         {
+            message.RequeueOnFailure = true;
+
             var batchContainer = Deserialize(message.Body);
             batchContainer.EventSequenceToken = new EventSequenceToken(sequenceId);
             return batchContainer;

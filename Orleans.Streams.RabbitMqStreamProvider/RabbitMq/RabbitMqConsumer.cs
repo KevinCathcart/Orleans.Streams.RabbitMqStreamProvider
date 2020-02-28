@@ -53,12 +53,12 @@ namespace Orleans.Streams.RabbitMq
             }
         }
 
-        public Task NackAsync(object channel, ulong deliveryTag)
+        public Task NackAsync(object channel, ulong deliveryTag, bool requeue)
         {
-            return _connection.RunOnScheduler(() => Nack(channel, deliveryTag));
+            return _connection.RunOnScheduler(() => Nack(channel, deliveryTag, requeue));
         }
 
-        private void Nack(object channel, ulong deliveryTag)
+        private void Nack(object channel, ulong deliveryTag, bool requeue)
         {
             try
             {
@@ -73,7 +73,7 @@ namespace Orleans.Streams.RabbitMq
                     return;
                 }
 
-                currentChannel.BasicNack(deliveryTag, multiple:false, requeue: true);
+                currentChannel.BasicNack(deliveryTag, multiple:false, requeue);
             }
             catch (Exception ex)
             {

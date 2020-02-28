@@ -18,6 +18,9 @@ namespace Orleans.Streams.RabbitMq
         public ulong DeliveryTag { get; set; }
         public bool Redelivered { get; set; }
 
+        // Set By DataAdapter on receive
+        public bool RequeueOnFailure { get; set; } = true;
+
         // Basic properties:
         public string AppId { get; set; }
         public string ClusterId { get; set; }
