@@ -1,5 +1,7 @@
 ﻿using System;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Orleans.ApplicationParts;
 using Orleans.Configuration;
 using Orleans.Runtime;
@@ -18,6 +20,11 @@ namespace Orleans.Hosting
             {
                 services.AddTransientNamedService<IBatchContainerSerializer, DefaultBatchContainerSerializer>(configurator.Name);
             });
+        }
+
+        public static void ConfigureStreamQueueMapper(this IRabbitMqStreamConfigurator configurator, Func<IServiceProvider, string, IStreamQueueMapper> factory)
+        {
+            configurator.ConfigureComponent(factory);
         }
 
         public static void ConfigureRabbitMq(this IRabbitMqStreamConfigurator configurator, string host, int port, string virtualHost, string user, string password, string queueName, bool useQueuePartitioning = RabbitMqOptions.DefaultUseQueuePartitioning, int numberOfQueues = RabbitMqOptions.DefaultNumberOfQueues)
@@ -63,6 +70,11 @@ namespace Orleans.Hosting
             configureAppPartsDelegate(RabbitMqStreamConfiguratorCommon.AddParts);
             this.ConfigureComponent(RabbitMqOptionsValidator.Create);
             this.ConfigureComponent(SimpleQueueCacheOptionsValidator.Create);
+
+            this.ConfigureDelegate(services =>
+            {
+                services.TryAddSingleton<IRabbitMqStreamQueueMapperFactory, RabbitMqStreamQueueMapperFactory>();
+            });
         }
     }
 
@@ -77,7 +89,10 @@ namespace Orleans.Hosting
                 .ConfigureApplicationParts(RabbitMqStreamConfiguratorCommon.AddParts);
             this.ConfigureComponent(RabbitMqOptionsValidator.Create);
 
-            this.ConfigureDelegate(services => { });
+            this.ConfigureDelegate(services =>
+            {
+                services.TryAddSingleton<IRabbitMqStreamQueueMapperFactory, RabbitMqStreamQueueMapperFactory>();
+            });
 
         }
     }

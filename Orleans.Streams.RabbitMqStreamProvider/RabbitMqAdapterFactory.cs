@@ -22,7 +22,8 @@ namespace Orleans.Streams
             RabbitMqOptions rmqOptions,
             CachingOptions cachingOptions,
             IServiceProvider serviceProvider,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory,
+            IRabbitMqStreamQueueMapperFactory streamQueueMapperFactory)
         {
             if (string.IsNullOrEmpty(providerName)) throw new ArgumentNullException(nameof(providerName));
             if (rmqOptions == null) throw new ArgumentNullException(nameof(rmqOptions));
@@ -31,7 +32,7 @@ namespace Orleans.Streams
             if (loggerFactory == null) throw new ArgumentNullException(nameof(loggerFactory));
 
             _cache = new SimpleQueueAdapterCache(new SimpleQueueCacheOptions() { CacheSize = cachingOptions.CacheSize}, providerName, loggerFactory);
-            _mapper = new HashRingBasedStreamQueueMapper(new HashRingStreamQueueMapperOptions { TotalQueueCount = rmqOptions.NumberOfQueues }, rmqOptions.QueueNamePrefix);
+            _mapper = streamQueueMapperFactory.Get(providerName);
             _failureHandler = Task.FromResult<IStreamFailureHandler>(new NoOpStreamDeliveryFailureHandler(false));
 
             var serializer = serviceProvider.GetServiceByName<IBatchContainerSerializer>(providerName) ??
