@@ -111,7 +111,7 @@ namespace Orleans.Streams
 
             foreach (var maxTag in maxTagsByChannel)
             {
-                if (_logger.IsEnabled(LogLevel.Debug)) _logger.LogDebug($"MessagesDeliveredAsync ACK #{maxTag.DeliveryTag}");
+                if (_logger.IsEnabled(LogLevel.Debug)) _logger.LogDebug("MessagesDeliveredAsync ACK #{deliveryTag}", maxTag.DeliveryTag);
                 await consumer.AckAsync(maxTag.Channel, maxTag.DeliveryTag, multiple: true);
             }
         }

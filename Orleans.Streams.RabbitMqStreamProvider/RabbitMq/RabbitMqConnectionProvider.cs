@@ -63,12 +63,12 @@ namespace Orleans.Streams.RabbitMq
 
         private void OnConnectionShutdown(object connection, ShutdownEventArgs reason)
         {
-            Logger.LogWarning($"Connection was shut down: [{reason.ReplyText}]");
+            Logger.LogWarning("Connection was shut down: [{reason}]", reason.ReplyText);
         }
 
         private void OnConnectionBlocked(object connection, ConnectionBlockedEventArgs reason)
         {
-            Logger.LogWarning($"Connection is blocked: [{reason.Reason}]");
+            Logger.LogWarning("Connection is blocked: [{reason}]", reason.Reason);
         }
 
         private void OnConnectionUnblocked(object connection, EventArgs args)
