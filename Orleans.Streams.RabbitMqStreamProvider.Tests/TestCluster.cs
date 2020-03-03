@@ -120,7 +120,7 @@ namespace RabbitMqStreamTests
                 {
                     configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.RmqProxyPort,
                         virtualHost: "/", user: "guest", password: "guest", queueName: Globals.StreamNameSpaceDefault);
-                    configurator.ConfigureCache(cacheSize: 100, cacheFillingTimeout: TimeSpan.FromSeconds(10));
+                    configurator.ConfigureCacheSize(100);
                     configurator.ConfigureStreamPubSub(StreamPubSubType.ImplicitOnly);
                     configurator.ConfigurePullingAgent(ob => ob.Configure(
                         options =>
@@ -133,7 +133,7 @@ namespace RabbitMqStreamTests
                     configurator.ConfigureQueueDataAdapter(ProtoBufDataAdapter.Create);
                     configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.RmqProxyPort,
                         virtualHost: "/", user: "guest", password: "guest", queueName: Globals.StreamNameSpaceProtoBuf);
-                    configurator.ConfigureCache(cacheSize: 100, cacheFillingTimeout: TimeSpan.FromSeconds(10));
+                    configurator.ConfigureCacheSize(100);
                     configurator.ConfigureStreamPubSub(StreamPubSubType.ImplicitOnly);
                     configurator.ConfigurePullingAgent(ob => ob.Configure(
                         options =>

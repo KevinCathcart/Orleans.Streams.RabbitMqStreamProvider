@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 
@@ -19,16 +20,24 @@ namespace Orleans.Streams.RabbitMq
 
         public void Dispose()
         {
-            _connection.Dispose();
+            // Deliberate fire and forget. We are dispatching Dispose on the connection's
+            // TaskScheduler to ensure we don't dispose in the middle of some method call.
+            _connection.RunOnScheduler(state => ((RabbitMqConnector)state).Dispose(), _connection);
         }
 
-        public void Ack(object channel, ulong deliveryTag, bool multiple)
+        public Task AckAsync(object channel, ulong deliveryTag, bool multiple)
+        {
+            return _connection.RunOnScheduler(() => Ack(channel, deliveryTag, multiple));
+        }
+
+        private void Ack(object channel, ulong deliveryTag, bool multiple)
         {
             try
             {
                 if(_connection.Logger.IsEnabled(LogLevel.Debug)) _connection.Logger.LogDebug($"RabbitMqConsumer: calling Ack on thread {Thread.CurrentThread.Name}.");
 
                 var currentChannel = _connection.Channel;
+                if (currentChannel == null) return; // Has been disposed
 
                 if (channel != currentChannel)
                 {
@@ -44,13 +53,19 @@ namespace Orleans.Streams.RabbitMq
             }
         }
 
-        public void Nack(object channel, ulong deliveryTag)
+        public Task NackAsync(object channel, ulong deliveryTag)
+        {
+            return _connection.RunOnScheduler(() => Nack(channel, deliveryTag));
+        }
+
+        private void Nack(object channel, ulong deliveryTag)
         {
             try
             {
-                _connection.Logger.LogDebug($"RabbitMqConsumer: calling Nack on thread {Thread.CurrentThread.Name}.");
+                if (_connection.Logger.IsEnabled(LogLevel.Debug)) _connection.Logger.LogDebug($"RabbitMqConsumer: calling Nack on thread {Thread.CurrentThread.Name}.");
 
                 var currentChannel = _connection.Channel;
+                if (currentChannel == null) return; // Has been disposed
 
                 if (channel != currentChannel)
                 {
@@ -66,11 +81,16 @@ namespace Orleans.Streams.RabbitMq
             }
         }
 
-        public RabbitMqMessage Receive()
+        public Task<RabbitMqMessage> ReceiveAsync()
+        {
+            return _connection.RunOnScheduler(self => ((RabbitMqConsumer)self).ReceiveImpl(), this);
+        }
+        private RabbitMqMessage ReceiveImpl()
         {
             try
             {
                 IModel currentChannel = _connection.Channel;
+                if (currentChannel == null) return null; // Has been disposed
                 BasicGetResult result = currentChannel.BasicGet(_queueProperties.Name, false);
                 if (result == null) return null;
                 return Convert(result, currentChannel);

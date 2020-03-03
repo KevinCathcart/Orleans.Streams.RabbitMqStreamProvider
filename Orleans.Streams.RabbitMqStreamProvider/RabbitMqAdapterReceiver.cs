@@ -12,18 +12,16 @@ namespace Orleans.Streams
         private readonly IRabbitMqConnectorFactory _rmqConnectorFactory;
         private readonly QueueId _queueId;
         private readonly IQueueDataAdapter<RabbitMqMessage, IBatchContainer> _dataAdapter;
-        private readonly TimeSpan _cacheFillingTimeout;
         private readonly ILogger _logger;
         private long _sequenceId;
         private IRabbitMqConsumer _consumer;
         private readonly List<PendingDelivery> pending;
 
-        public RabbitMqAdapterReceiver(IRabbitMqConnectorFactory rmqConnectorFactory, QueueId queueId, IQueueDataAdapter<RabbitMqMessage, IBatchContainer> dataAdapter, TimeSpan cacheFillingTimeout)
+        public RabbitMqAdapterReceiver(IRabbitMqConnectorFactory rmqConnectorFactory, QueueId queueId, IQueueDataAdapter<RabbitMqMessage, IBatchContainer> dataAdapter)
         {
             _rmqConnectorFactory = rmqConnectorFactory;
             _queueId = queueId;
             _dataAdapter = dataAdapter;
-            _cacheFillingTimeout = cacheFillingTimeout;
             _logger = _rmqConnectorFactory.LoggerFactory.CreateLogger($"{typeof(RabbitMqAdapterReceiver).FullName}.{queueId}");
             _sequenceId = 0;
             pending = new List<PendingDelivery>();
@@ -37,23 +35,13 @@ namespace Orleans.Streams
 
         public async Task<IList<IBatchContainer>> GetQueueMessagesAsync(int maxCount)
         {
+            var consumer = _consumer; // store direct ref, in case we are somehow asked to shutdown while we are receiving.
+            if (consumer == null) return new List<IBatchContainer>();
+
             var multibatch = new List<IBatchContainer>();
-            var startTimestamp = DateTime.UtcNow;
             for (int count = 0; count < maxCount || maxCount == QueueAdapterConstants.UNLIMITED_GET_QUEUE_MSG; count++)
             {
-                // in case of high latency on the network, new messages will be coming in a low rate and until the cache
-                // will be filled, we would will be looping here; the timeout is here to break the loop and start the
-                // consumption if it takes too long to fill the cache
-                if (DateTime.UtcNow - startTimestamp > _cacheFillingTimeout) break;
-
-                // on a very slow network with high latency, the synchronous RMQ Receive will block all worker threads until
-                // the RMQ queue is empty or the cache is full; in order to enforce the consumption, the Yield is called,
-                // which foces asynchronicity and allows other scheduled methods (the consumers) to continue;
-                // the right ways would be to await a ReceiveAsync, but there is currently no such method in RMQ client library;
-                // we could only wrap the call in Task.Run, which is also a bad practice
-                await Task.Yield();
-
-                var item = _consumer.Receive();
+                var item = await consumer.ReceiveAsync();
                 if (item == null) break;
                 try
                 {
@@ -64,15 +52,16 @@ namespace Orleans.Streams
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "GetQueueMessagesAsync: failed to deserialize the message! The message will be thrown away (by calling ACK).");
-                    _consumer.Ack(item.Channel, item.DeliveryTag, multiple: false);
+                    await consumer.AckAsync(item.Channel, item.DeliveryTag, multiple: false);
                 }
             }
             return multibatch;
         }
 
-        public Task MessagesDeliveredAsync(IList<IBatchContainer> messages)
+        public async Task MessagesDeliveredAsync(IList<IBatchContainer> messages)
         {
-            if (!messages.Any()) return Task.CompletedTask;
+            var consumer = _consumer; // store direct ref, in case we are somehow asked to shutdown while we are receiving.
+            if (messages.Count == 0 || consumer == null) return;
 
             List<StreamSequenceToken> deliveredTokens = messages.Select(message => message.SequenceToken).ToList();
 
@@ -81,7 +70,7 @@ namespace Orleans.Streams
             newest = HandlePartiallyProcessedGroup(deliveredTokens, newest);
             if(newest == null)
             {
-                return Task.CompletedTask;
+                return;
             }
 
             // finalize all pending messages at or before the newest
@@ -102,7 +91,7 @@ namespace Orleans.Streams
             foreach (var group in incompletelyDeliveredGroups)
             {
                 if (_logger.IsEnabled(LogLevel.Debug)) _logger.LogDebug($"MessagesDeliveredAsync NACK #{group.DeliveryTag}");
-                _consumer.Nack(group.Channel, group.DeliveryTag);
+                await consumer.NackAsync(group.Channel, group.DeliveryTag);
             }
 
             var fullyDeliveredGroups = groupsByDeliveryStatus[true];
@@ -115,10 +104,8 @@ namespace Orleans.Streams
             foreach (var maxTag in maxTagsByChannel)
             {
                 if (_logger.IsEnabled(LogLevel.Debug)) _logger.LogDebug($"MessagesDeliveredAsync ACK #{maxTag.DeliveryTag}");
-                _consumer.Ack(maxTag.Channel, maxTag.DeliveryTag, multiple: true);
+                await consumer.AckAsync(maxTag.Channel, maxTag.DeliveryTag, multiple: true);
             }
-
-            return Task.CompletedTask;
         }
 
         private StreamSequenceToken HandlePartiallyProcessedGroup(List<StreamSequenceToken> deliveredTokens, StreamSequenceToken newest)
@@ -146,7 +133,9 @@ namespace Orleans.Streams
 
         public Task Shutdown(TimeSpan timeout)
         {
-            _consumer.Dispose();
+            var consumer = _consumer;
+            _consumer = null;
+            consumer?.Dispose();
             return Task.CompletedTask;
         }
 

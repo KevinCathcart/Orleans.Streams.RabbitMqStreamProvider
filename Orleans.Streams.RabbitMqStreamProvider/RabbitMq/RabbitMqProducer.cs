@@ -9,7 +9,7 @@ using RabbitMQ.Client.Events;
 
 namespace Orleans.Streams.RabbitMq
 {
-    // This is single threaded except the OnBasic* events and timeouts, which execute from other threads.
+    // Caution: the OnBasic* callbacks, and timeouts do not run in the connection's task scheduler.
     internal class RabbitMqProducer : IRabbitMqProducer
     {
         private readonly RabbitMqConnector _connection;
@@ -79,24 +79,33 @@ namespace Orleans.Streams.RabbitMq
 
         public void Dispose()
         {
-            _connection.Dispose();
+            // Deliberate fire and forget. We are dispatching Dispose on the connection's
+            // TaskScheduler to ensure we don't dispose in the middle of some method call.
+            _connection.RunOnScheduler(state => ((RabbitMqConnector)state).Dispose(), _connection);
         }
 
         public Task SendAsync(RabbitMqMessage message)
         {
+            return _connection.RunOnScheduler(() => SendImpl(message));
+        }
+
+        private Task SendImpl(RabbitMqMessage message)
+        {
             var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             try
             {
-                _connection.Logger.LogDebug($"RabbitMqProducer: calling Send on thread {Thread.CurrentThread.Name}.");
-                
-                var basicProperties = _connection.Channel.CreateBasicProperties();
+                if (_connection.Logger.IsEnabled(LogLevel.Debug)) _connection.Logger.LogDebug($"RabbitMqProducer: calling Send on thread {Thread.CurrentThread.Name}.");
+
+                var channel = _connection.Channel;
+                if (channel == null) throw new ObjectDisposedException(nameof(RabbitMqProducer));
+
+                var basicProperties = channel.CreateBasicProperties();
                 Bind(basicProperties, message);
                 basicProperties.MessageId = Guid.NewGuid().ToString();
 
-                var channel = _connection.Channel;
                 if (message.ShouldConfirmPublish)
                 {
-                    var seqNo = _connection.Channel.NextPublishSeqNo;
+                    var seqNo = channel.NextPublishSeqNo;
                     var mif = new MessageInFlight(tcs, channel, this);
                     this.AddMessageInFlight(mif, TimeSpan.FromSeconds(10));
                 }

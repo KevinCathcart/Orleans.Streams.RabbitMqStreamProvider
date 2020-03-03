@@ -47,18 +47,9 @@ namespace Orleans.Hosting
 
     public static class SiloRabbitMqStreamConfiguratorExtensions
     {
-        public static void ConfigureCache(this ISiloRabbitMqStreamConfigurator configurator, int cacheSize)
+        public static void ConfigureCacheSize(this ISiloRabbitMqStreamConfigurator configurator, int cacheSize = SimpleQueueCacheOptions.DEFAULT_CACHE_SIZE)
         {
-            configurator.Configure<CachingOptions>(ob => ob.Configure(options => options.CacheSize = cacheSize));
-        }
-
-        public static void ConfigureCache(this ISiloRabbitMqStreamConfigurator configurator, int cacheSize, TimeSpan cacheFillingTimeout)
-        {
-            configurator.Configure<CachingOptions>(ob => ob.Configure(options =>
-                {
-                    options.CacheSize = cacheSize;
-                    options.CacheFillingTimeout = cacheFillingTimeout;
-                }));
+            configurator.Configure<SimpleQueueCacheOptions>(ob => ob.Configure(options => options.CacheSize = cacheSize));
         }
     }
 

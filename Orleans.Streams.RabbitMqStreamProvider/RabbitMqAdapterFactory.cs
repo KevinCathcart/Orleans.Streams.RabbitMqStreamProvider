@@ -21,7 +21,7 @@ namespace Orleans.Streams
         public RabbitMqAdapterFactory(
             string providerName,
             IOptionsMonitor<RabbitMqOptions> rmqOptionsAccessor,
-            IOptionsMonitor<CachingOptions> cachingOptionsAccessor,
+            IOptionsMonitor<SimpleQueueCacheOptions> cachingOptionsAccessor,
             IServiceProvider serviceProvider,
             ILoggerFactory loggerFactory,
             IRabbitMqStreamQueueMapperFactory streamQueueMapperFactory,
@@ -37,7 +37,7 @@ namespace Orleans.Streams
             var rmqOptions = rmqOptionsAccessor.Get(providerName);
             var cachingOptions = cachingOptionsAccessor.Get(providerName);
 
-            _cache = new SimpleQueueAdapterCache(new SimpleQueueCacheOptions() { CacheSize = cachingOptions.CacheSize}, providerName, loggerFactory);
+            _cache = new SimpleQueueAdapterCache(cachingOptions, providerName, loggerFactory);
             _mapper = streamQueueMapperFactory.Get(providerName);
             _failureHandler = Task.FromResult<IStreamFailureHandler>(new NoOpStreamDeliveryFailureHandler(false));
 
@@ -46,7 +46,7 @@ namespace Orleans.Streams
             var dataAdapter = serviceProvider.GetServiceByName<IQueueDataAdapter<RabbitMqMessage, IBatchContainer>>(providerName) ??
                     RabbitMqDataAdapter.Create(serviceProvider, providerName);
 
-            _adapter = new RabbitMqAdapter(rmqOptions, cachingOptions, dataAdapter, providerName, loggerFactory, topologyProvider);
+            _adapter = new RabbitMqAdapter(rmqOptions, dataAdapter, providerName, loggerFactory, topologyProvider);
         }
 
         public Task<IQueueAdapter> CreateAdapter() => Task.FromResult(_adapter);

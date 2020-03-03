@@ -13,9 +13,9 @@ namespace Orleans.Streams.RabbitMq
 
     internal interface IRabbitMqConsumer : IDisposable
     {
-        void Ack(object channel, ulong deliveryTag, bool multiple);
-        void Nack(object channel, ulong deliveryTag);
-        RabbitMqMessage Receive();
+        Task AckAsync(object channel, ulong deliveryTag, bool multiple);
+        Task NackAsync(object channel, ulong deliveryTag);
+        Task<RabbitMqMessage> ReceiveAsync();
     }
 
     internal interface IRabbitMqProducer : IDisposable
