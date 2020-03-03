@@ -10,12 +10,15 @@ namespace Orleans.Streams.RabbitMq
     {
         private readonly RabbitMqConnector _connection;
         private readonly RabbitMqQueueProperties _queueProperties;
+        private readonly DeclarationHelper _declarationHelper;
 
-        public RabbitMqConsumer(RabbitMqConnector connection, RabbitMqQueueProperties queueProperties)
+        public RabbitMqConsumer(RabbitMqConnector connection, string queueName, ITopologyProvider topologyProvider)
         {
             _connection = connection;
             _connection.ModelCreated += OnModelCreated;
-            _queueProperties = queueProperties;
+            _queueProperties = topologyProvider.GetQueueProperties(queueName);
+
+            _declarationHelper = new DeclarationHelper(topologyProvider);
         }
 
         public void Dispose()
@@ -131,14 +134,11 @@ namespace Orleans.Streams.RabbitMq
 
         private void OnModelCreated(object sender, ModelCreatedEventArgs args)
         {
+            IModel channel = args.Channel;
             if (_queueProperties.ShouldDeclare)
             {
-                args.Channel.QueueDeclare(
-                    _queueProperties.Name,
-                    _queueProperties.Durable,
-                    _queueProperties.Exclusive,
-                    _queueProperties.AutoDelete,
-                    _queueProperties.Arguments);
+                _declarationHelper.Clear();
+                _declarationHelper.DeclareQueue(_queueProperties.Name, channel);
             }
         }
     }

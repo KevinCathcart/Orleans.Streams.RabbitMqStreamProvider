@@ -27,5 +27,6 @@ namespace Orleans.Streams.RabbitMq
     {
         string GetNameForQueue(QueueId queueId);
         RabbitMqQueueProperties GetQueueProperties(string queueName);
+        RabbitMqExchangeProperties GetExchangeProperties(string exchangeName);
     }
 }

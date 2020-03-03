@@ -14,17 +14,21 @@ namespace Orleans.Streams.RabbitMq
     {
         private readonly RabbitMqConnector _connection;
         private readonly ConcurrentDictionary<ulong, MessageInFlight> messagesInFlight = new ConcurrentDictionary<ulong, MessageInFlight>();
+        private readonly DeclarationHelper _declarationHelper;
 
-        public RabbitMqProducer(RabbitMqConnector connection)
+        public RabbitMqProducer(RabbitMqConnector connection, ITopologyProvider topologyProvider)
         {
             _connection = connection;
             _connection.BasicAcks += OnBasicAck;
             _connection.BasicNacks += OnBasicNack;
             _connection.ModelCreated += OnModelCreated;
+            _declarationHelper = new DeclarationHelper(topologyProvider);
         }
 
         private void OnModelCreated(object sender, ModelCreatedEventArgs e)
         {
+            _declarationHelper.Clear();
+
             // This occurs on a new channel. Therefore previous in-flight messages will never be confirmed but may have duplicate sequence numbers.
             // Hence we clear them out. These messages will still time out like normal.
             messagesInFlight.Clear();
@@ -102,6 +106,8 @@ namespace Orleans.Streams.RabbitMq
                 var basicProperties = channel.CreateBasicProperties();
                 Bind(basicProperties, message);
                 basicProperties.MessageId = Guid.NewGuid().ToString();
+
+                _declarationHelper.DeclareExchange(message.Exchange, channel);
 
                 if (message.ShouldConfirmPublish)
                 {

@@ -18,9 +18,9 @@ namespace Orleans.Streams.RabbitMq
         public ILoggerFactory LoggerFactory { get; }
 
         public IRabbitMqConsumer CreateConsumer(QueueId queueId)
-            => new RabbitMqConsumer(new RabbitMqConnector(_connectionProvider, LoggerFactory.CreateLogger($"{typeof(RabbitMqConsumer).FullName}.{queueId}")), _topologyProvider.GetQueueProperties(_topologyProvider.GetNameForQueue(queueId)));
+            => new RabbitMqConsumer(new RabbitMqConnector(_connectionProvider, LoggerFactory.CreateLogger($"{typeof(RabbitMqConsumer).FullName}.{queueId}")), _topologyProvider.GetNameForQueue(queueId), _topologyProvider);
 
         public IRabbitMqProducer CreateProducer()
-            => new RabbitMqProducer(new RabbitMqConnector(_connectionProvider, LoggerFactory.CreateLogger<RabbitMqProducer>()));
+            => new RabbitMqProducer(new RabbitMqConnector(_connectionProvider, LoggerFactory.CreateLogger<RabbitMqProducer>()), _topologyProvider);
     }
 }
