@@ -25,8 +25,7 @@ namespace Orleans.Streams
             IOptionsMonitor<SimpleQueueCacheOptions> cachingOptionsAccessor,
             IServiceProvider serviceProvider,
             ILoggerFactory loggerFactory,
-            IRabbitMqStreamQueueMapperFactory streamQueueMapperFactory,
-            ITopologyProviderFactory topologyProviderFactory)
+            IRabbitMqStreamQueueMapperFactory streamQueueMapperFactory)
         {
 
             if (string.IsNullOrEmpty(providerName)) throw new ArgumentNullException(nameof(providerName));
@@ -34,20 +33,19 @@ namespace Orleans.Streams
             if (cachingOptionsAccessor == null) throw new ArgumentNullException(nameof(cachingOptionsAccessor));
             if (serviceProvider == null) throw new ArgumentNullException(nameof(serviceProvider));
             if (loggerFactory == null) throw new ArgumentNullException(nameof(loggerFactory));
+            if (streamQueueMapperFactory == null) throw new ArgumentNullException(nameof(streamQueueMapperFactory));
 
-            var rmqOptions = rmqOptionsAccessor.Get(providerName);
+            var rmqOptions = rmqOptionsAccessor.Get(providerName); 
             var cachingOptions = cachingOptionsAccessor.Get(providerName);
 
             _cache = new SimpleQueueAdapterCache(cachingOptions, providerName, loggerFactory);
             _mapper = streamQueueMapperFactory.Get(providerName);
             _failureHandler = Task.FromResult<IStreamFailureHandler>(new NoOpStreamDeliveryFailureHandler(false));
 
-            var topologyProvider = topologyProviderFactory.Get(providerName);
-
             var dataAdapter = serviceProvider.GetServiceByName<IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>>>(providerName) ??
                     RabbitMqDataAdapter.Create(serviceProvider, providerName);
 
-            _adapter = new RabbitMqAdapter(rmqOptions, dataAdapter, providerName, loggerFactory, topologyProvider);
+            _adapter = new RabbitMqAdapter(rmqOptions, dataAdapter, providerName, serviceProvider.GetRequiredServiceByName<IRabbitMqConnectorFactory>(providerName));
         }
 
         public Task<IQueueAdapter> CreateAdapter() => Task.FromResult(_adapter);

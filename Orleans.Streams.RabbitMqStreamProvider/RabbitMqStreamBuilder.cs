@@ -62,6 +62,7 @@ namespace Orleans.Hosting
             configureAppPartsDelegate(RabbitMqStreamConfiguratorCommon.AddParts);
             this.ConfigureComponent(RabbitMqOptionsValidator.Create);
             this.ConfigureComponent(SimpleQueueCacheOptionsValidator.Create);
+            this.ConfigureComponent(RabbitMqOnlineConnectorFactory.Create);
 
             this.ConfigureDelegate(services =>
             {
@@ -81,6 +82,7 @@ namespace Orleans.Hosting
             builder
                 .ConfigureApplicationParts(RabbitMqStreamConfiguratorCommon.AddParts);
             this.ConfigureComponent(RabbitMqOptionsValidator.Create);
+            this.ConfigureComponent(RabbitMqOnlineConnectorFactory.Create);
 
             this.ConfigureDelegate(services =>
             {

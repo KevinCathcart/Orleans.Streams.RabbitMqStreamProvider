@@ -8,11 +8,11 @@ namespace Orleans.Streams.RabbitMq
 {
     internal class RabbitMqConsumer : IRabbitMqConsumer
     {
-        private readonly RabbitMqConnector _connection;
+        private readonly IRabbitMqConnector _connection;
         private readonly RabbitMqQueueProperties _queueProperties;
         private readonly DeclarationHelper _declarationHelper;
 
-        public RabbitMqConsumer(RabbitMqConnector connection, string queueName, ITopologyProvider topologyProvider)
+        public RabbitMqConsumer(IRabbitMqConnector connection, string queueName, ITopologyProvider topologyProvider)
         {
             _connection = connection;
             _connection.ModelCreated += OnModelCreated;
@@ -25,7 +25,7 @@ namespace Orleans.Streams.RabbitMq
         {
             // Deliberate fire and forget. We are dispatching Dispose on the connection's
             // TaskScheduler to ensure we don't dispose in the middle of some method call.
-            _connection.RunOnScheduler(state => ((RabbitMqConnector)state).Dispose(), _connection);
+            _connection.RunOnScheduler(state => ((IRabbitMqConnector)state).Dispose(), _connection);
         }
 
         public Task AckAsync(object channel, ulong deliveryTag, bool multiple)

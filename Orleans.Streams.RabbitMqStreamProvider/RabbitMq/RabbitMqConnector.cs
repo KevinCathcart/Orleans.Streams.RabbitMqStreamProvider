@@ -18,9 +18,9 @@ namespace Orleans.Streams.RabbitMq
         }
     }
 
-    internal class RabbitMqConnector : IDisposable
+    internal class RabbitMqConnector : IRabbitMqConnector
     {
-        public readonly ILogger Logger;
+        public ILogger Logger { get; }
         private readonly RabbitMqConnectionProvider _connectionProvider;
 
         private bool _disposed;
@@ -90,42 +90,42 @@ namespace Orleans.Streams.RabbitMq
 
     static class RabbitMqConnectorExtensions
     {
-        public static Task RunOnScheduler(this RabbitMqConnector connector, Action action)
+        public static Task RunOnScheduler(this IRabbitMqConnector connector, Action action)
         {
             return Task.Factory.StartNew(action, CancellationToken.None, TaskCreationOptions.DenyChildAttach, connector.Scheduler);
         }
 
-        public static Task RunOnScheduler(this RabbitMqConnector connector, Action<object> action, object state)
+        public static Task RunOnScheduler(this IRabbitMqConnector connector, Action<object> action, object state)
         {
             return Task.Factory.StartNew(action, state, CancellationToken.None, TaskCreationOptions.DenyChildAttach, connector.Scheduler);
         }
 
-        public static Task<TResult> RunOnScheduler<TResult>(this RabbitMqConnector connector, Func<TResult> function)
+        public static Task<TResult> RunOnScheduler<TResult>(this IRabbitMqConnector connector, Func<TResult> function)
         {
             return Task.Factory.StartNew(function, CancellationToken.None, TaskCreationOptions.DenyChildAttach, connector.Scheduler);
         }
 
-        public static Task<TResult> RunOnScheduler<TResult>(this RabbitMqConnector connector, Func<object, TResult> function, object state)
+        public static Task<TResult> RunOnScheduler<TResult>(this IRabbitMqConnector connector, Func<object, TResult> function, object state)
         {
             return Task.Factory.StartNew(function, state, CancellationToken.None, TaskCreationOptions.DenyChildAttach, connector.Scheduler);
         }
 
-        public static Task RunOnScheduler(this RabbitMqConnector connector, Func<Task> function)
+        public static Task RunOnScheduler(this IRabbitMqConnector connector, Func<Task> function)
         {
             return connector.RunOnScheduler<Task>(function).Unwrap();
         }
 
-        public static Task RunOnScheduler(this RabbitMqConnector connector, Func<object,Task> function, object state)
+        public static Task RunOnScheduler(this IRabbitMqConnector connector, Func<object,Task> function, object state)
         {
             return connector.RunOnScheduler<Task>(function, state).Unwrap();
         }
 
-        public static Task<TResult> RunOnScheduler<TResult>(this RabbitMqConnector connector, Func<Task<TResult>> function)
+        public static Task<TResult> RunOnScheduler<TResult>(this IRabbitMqConnector connector, Func<Task<TResult>> function)
         {
             return connector.RunOnScheduler<Task<TResult>>(function).Unwrap();
         }
 
-        public static Task<TResult> RunOnScheduler<TResult>(this RabbitMqConnector connector, Func<object, Task<TResult>> function, object state)
+        public static Task<TResult> RunOnScheduler<TResult>(this IRabbitMqConnector connector, Func<object, Task<TResult>> function, object state)
         {
             return connector.RunOnScheduler<Task<TResult>>(function, state).Unwrap();
         }

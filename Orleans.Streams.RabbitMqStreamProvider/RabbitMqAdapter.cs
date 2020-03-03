@@ -22,11 +22,11 @@ namespace Orleans.Streams
         private readonly ThreadLocal<IRabbitMqProducer> _producer; 
         private readonly IRabbitMqConnectorFactory _rmqConnectorFactory;
 
-        public RabbitMqAdapter(RabbitMqOptions rmqOptions, IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> dataAdapter, string providerName, ILoggerFactory loggerFactory, ITopologyProvider topologyProvider)
+        public RabbitMqAdapter(RabbitMqOptions rmqOptions, IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> dataAdapter, string providerName, IRabbitMqConnectorFactory rmqConnectorFactory)
         {
             _dataAdapter = dataAdapter;
             Name = providerName;
-            _rmqConnectorFactory = new RabbitMqOnlineConnectorFactory(rmqOptions, loggerFactory, topologyProvider);
+            _rmqConnectorFactory = rmqConnectorFactory;
             Direction = rmqOptions.Direction;
             _producer = new ThreadLocal<IRabbitMqProducer>(() => _rmqConnectorFactory.CreateProducer());
         }

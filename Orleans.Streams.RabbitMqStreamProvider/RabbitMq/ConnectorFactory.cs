@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Orleans.Configuration;
 
 namespace Orleans.Streams.RabbitMq
@@ -18,9 +20,22 @@ namespace Orleans.Streams.RabbitMq
         public ILoggerFactory LoggerFactory { get; }
 
         public IRabbitMqConsumer CreateConsumer(QueueId queueId)
-            => new RabbitMqConsumer(new RabbitMqConnector(_connectionProvider, LoggerFactory.CreateLogger($"{typeof(RabbitMqConsumer).FullName}.{queueId}")), _topologyProvider.GetNameForQueue(queueId), _topologyProvider);
+            => new RabbitMqConsumer(CreateConnector(LoggerFactory.CreateLogger($"{typeof(RabbitMqConsumer).FullName}.{queueId}")), _topologyProvider.GetNameForQueue(queueId), _topologyProvider);
 
         public IRabbitMqProducer CreateProducer()
-            => new RabbitMqProducer(new RabbitMqConnector(_connectionProvider, LoggerFactory.CreateLogger<RabbitMqProducer>()), _topologyProvider);
+            => new RabbitMqProducer(CreateConnector(LoggerFactory.CreateLogger<RabbitMqProducer>()), _topologyProvider);
+
+        public IRabbitMqConnector CreateGenericConnector(string name)
+            => CreateConnector(LoggerFactory.CreateLogger($"{typeof(RabbitMqConnector)}.{name}"));
+
+        private IRabbitMqConnector CreateConnector(ILogger logger)
+            => new RabbitMqConnector(_connectionProvider, logger);
+
+        internal static IRabbitMqConnectorFactory Create(IServiceProvider services, string name)
+        {
+            var options = services.GetOptionsByName<RabbitMqOptions>(name);
+            var topologyFactory = services.GetRequiredService<ITopologyProviderFactory>();
+            return ActivatorUtilities.CreateInstance<RabbitMqOnlineConnectorFactory>(services, options, topologyFactory.Get(name));
+        }
     }
 }

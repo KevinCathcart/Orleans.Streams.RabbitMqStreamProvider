@@ -12,11 +12,11 @@ namespace Orleans.Streams.RabbitMq
     // Caution: the OnBasic* callbacks, and timeouts do not run in the connection's task scheduler.
     internal class RabbitMqProducer : IRabbitMqProducer
     {
-        private readonly RabbitMqConnector _connection;
+        private readonly IRabbitMqConnector _connection;
         private readonly ConcurrentDictionary<ulong, MessageInFlight> messagesInFlight = new ConcurrentDictionary<ulong, MessageInFlight>();
         private readonly DeclarationHelper _declarationHelper;
 
-        public RabbitMqProducer(RabbitMqConnector connection, ITopologyProvider topologyProvider)
+        public RabbitMqProducer(IRabbitMqConnector connection, ITopologyProvider topologyProvider)
         {
             _connection = connection;
             _connection.BasicAcks += OnBasicAck;
@@ -85,7 +85,7 @@ namespace Orleans.Streams.RabbitMq
         {
             // Deliberate fire and forget. We are dispatching Dispose on the connection's
             // TaskScheduler to ensure we don't dispose in the middle of some method call.
-            _connection.RunOnScheduler(state => ((RabbitMqConnector)state).Dispose(), _connection);
+            _connection.RunOnScheduler(state => ((IRabbitMqConnector)state).Dispose(), _connection);
         }
 
         public Task SendAsync(RabbitMqMessage message)

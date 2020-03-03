@@ -1,24 +1,38 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 
 namespace Orleans.Streams.RabbitMq
 {
-    internal interface IRabbitMqConnectorFactory
+    public interface IRabbitMqConnectorFactory
     {
         ILoggerFactory LoggerFactory { get; }
         IRabbitMqConsumer CreateConsumer(QueueId queueId);
         IRabbitMqProducer CreateProducer();
+        IRabbitMqConnector CreateGenericConnector(string name);
     }
 
-    internal interface IRabbitMqConsumer : IDisposable
+    public interface IRabbitMqConnector : IDisposable
+    {
+        IModel Channel { get; }
+        ILogger Logger { get; }
+        TaskScheduler Scheduler { get; }
+
+        event EventHandler<BasicAckEventArgs> BasicAcks;
+        event EventHandler<BasicNackEventArgs> BasicNacks;
+        event EventHandler<ModelCreatedEventArgs> ModelCreated;
+    }
+
+    public interface IRabbitMqConsumer : IDisposable
     {
         Task AckAsync(object channel, ulong deliveryTag, bool multiple);
         Task NackAsync(object channel, ulong deliveryTag, bool requeue);
         Task<RabbitMqMessage> ReceiveAsync();
     }
 
-    internal interface IRabbitMqProducer : IDisposable
+    public interface IRabbitMqProducer : IDisposable
     {
         Task SendAsync(RabbitMqMessage message);
     }
@@ -29,4 +43,5 @@ namespace Orleans.Streams.RabbitMq
         RabbitMqQueueProperties GetQueueProperties(string queueName);
         RabbitMqExchangeProperties GetExchangeProperties(string exchangeName);
     }
+
 }
