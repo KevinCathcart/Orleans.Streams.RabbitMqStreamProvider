@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Orleans.Configuration;
-using Orleans.Streams.BatchContainer;
 using Orleans.Streams.RabbitMq;
 
 namespace Orleans.Streams
@@ -19,19 +18,15 @@ namespace Orleans.Streams
     /// </summary>
     internal class RabbitMqAdapter : IQueueAdapter
     {
-        private readonly IBatchContainerSerializer _serializer;
-        private readonly IStreamQueueMapper _mapper;
-        private readonly ITopologyProvider _topologyProvider;
+        private readonly IQueueDataAdapter<RabbitMqMessage, IBatchContainer> _dataAdapter;
         private readonly ThreadLocal<IRabbitMqProducer> _producer;
         private readonly IRabbitMqConnectorFactory _rmqConnectorFactory;
         private readonly TimeSpan _cacheFillingTimeout;
 
-        public RabbitMqAdapter(RabbitMqOptions rmqOptions, CachingOptions cachingOptions, IBatchContainerSerializer serializer, IStreamQueueMapper mapper, string providerName, ILoggerFactory loggerFactory, ITopologyProvider topologyProvider)
+        public RabbitMqAdapter(RabbitMqOptions rmqOptions, CachingOptions cachingOptions, IQueueDataAdapter<RabbitMqMessage, IBatchContainer> dataAdapter, string providerName, ILoggerFactory loggerFactory, ITopologyProvider topologyProvider)
         {
-            _serializer = serializer;
-            _mapper = mapper;
+            _dataAdapter = dataAdapter;
             Name = providerName;
-            _topologyProvider = topologyProvider;
             _rmqConnectorFactory = new RabbitMqOnlineConnectorFactory(rmqOptions, loggerFactory, topologyProvider);
             _cacheFillingTimeout = cachingOptions.CacheFillingTimeout;
             _producer = new ThreadLocal<IRabbitMqProducer>(() => _rmqConnectorFactory.CreateProducer());
@@ -40,16 +35,15 @@ namespace Orleans.Streams
         public string Name { get; }
         public bool IsRewindable => false;
         public StreamProviderDirection Direction => StreamProviderDirection.ReadWrite;
-        public IQueueAdapterReceiver CreateReceiver(QueueId queueId) => new RabbitMqAdapterReceiver(_rmqConnectorFactory, queueId, _serializer, _cacheFillingTimeout);
+        public IQueueAdapterReceiver CreateReceiver(QueueId queueId) => new RabbitMqAdapterReceiver(_rmqConnectorFactory, queueId, _dataAdapter, _cacheFillingTimeout);
 
         public async Task QueueMessageBatchAsync<T>(Guid streamGuid, string streamNamespace, IEnumerable<T> events, StreamSequenceToken token, Dictionary<string, object> requestContext)
         {
             if (token != null) throw new ArgumentException("RabbitMq stream provider does not support non-null StreamSequenceToken.", nameof(token));
 
-            var queueId = _mapper.GetQueueForStream(streamGuid, streamNamespace);
-            var queueName = _topologyProvider.GetNameForQueue(queueId);
+            RabbitMqMessage message = _dataAdapter.ToQueueMessage(streamGuid, streamNamespace, events, token, requestContext);
 
-            await _producer.Value.SendAsync(string.Empty, queueName, RabbitMqDataAdapter.ToQueueMessage(_serializer, streamGuid, streamNamespace, events, requestContext), shouldConfirm: true, persistent: true );
+            await _producer.Value.SendAsync(message);
         }
     }
 }

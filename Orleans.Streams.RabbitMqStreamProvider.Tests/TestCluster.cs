@@ -130,7 +130,7 @@ namespace RabbitMqStreamTests
                 })
                 .AddRabbitMqStream(Globals.StreamProviderNameProtoBuf, configurator =>
                 {
-                    configurator.UseSerializer<ProtoBufBatchContainerSerializer>();
+                    configurator.ConfigureQueueDataAdapter(ProtoBufDataAdapter.Create);
                     configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.RmqProxyPort,
                         virtualHost: "/", user: "guest", password: "guest", queueName: Globals.StreamNameSpaceProtoBuf);
                     configurator.ConfigureCache(cacheSize: 100, cacheFillingTimeout: TimeSpan.FromSeconds(10));
@@ -158,7 +158,7 @@ namespace RabbitMqStreamTests
                 })
                 .AddRabbitMqStream(Globals.StreamProviderNameProtoBuf, configurator =>
                 {
-                    configurator.UseSerializer<ProtoBufBatchContainerSerializer>();
+                    configurator.ConfigureQueueDataAdapter(ProtoBufDataAdapter.Create);
                     configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.RmqProxyPort,
                         virtualHost: "/", user: "guest", password: "guest", queueName: Globals.StreamNameSpaceProtoBuf);
                 })

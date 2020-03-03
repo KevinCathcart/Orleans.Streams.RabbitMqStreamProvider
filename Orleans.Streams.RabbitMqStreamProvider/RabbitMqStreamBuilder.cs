@@ -3,9 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orleans.ApplicationParts;
 using Orleans.Configuration;
-using Orleans.Runtime;
 using Orleans.Streams;
-using Orleans.Streams.BatchContainer;
 using Orleans.Streams.RabbitMq;
 
 namespace Orleans.Hosting
@@ -14,20 +12,17 @@ namespace Orleans.Hosting
 
     public static class RabbitMqStreamConfiguratorExtensions
     {
-        public static void UseSerializer<TSerializer>(this IRabbitMqStreamConfigurator configurator) where TSerializer : IBatchContainerSerializer
-        {
-            configurator.ConfigureDelegate(services =>
-            {
-                services.AddTransientNamedService<IBatchContainerSerializer, DefaultBatchContainerSerializer>(configurator.Name);
-            });
-        }
-
         public static void ConfigureStreamQueueMapper(this IRabbitMqStreamConfigurator configurator, Func<IServiceProvider, string, IStreamQueueMapper> factory)
         {
             configurator.ConfigureComponent(factory);
         }
 
         public static void ConfigureTopologyProvider(this IRabbitMqStreamConfigurator configurator, Func<IServiceProvider, string, ITopologyProvider> factory)
+        {
+            configurator.ConfigureComponent(factory);
+        }
+
+        public static void ConfigureQueueDataAdapter(this IRabbitMqStreamConfigurator configurator, Func<IServiceProvider, string, IQueueDataAdapter<RabbitMqMessage, IBatchContainer>> factory)
         {
             configurator.ConfigureComponent(factory);
         }

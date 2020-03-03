@@ -11,17 +11,17 @@ namespace Orleans.Streams
     {
         private readonly IRabbitMqConnectorFactory _rmqConnectorFactory;
         private readonly QueueId _queueId;
-        private readonly IBatchContainerSerializer _serializer;
+        private readonly IQueueDataAdapter<RabbitMqMessage, IBatchContainer> _dataAdapter;
         private readonly TimeSpan _cacheFillingTimeout;
         private readonly ILogger _logger;
         private long _sequenceId;
         private IRabbitMqConsumer _consumer;
 
-        public RabbitMqAdapterReceiver(IRabbitMqConnectorFactory rmqConnectorFactory, QueueId queueId, IBatchContainerSerializer serializer, TimeSpan cacheFillingTimeout)
+        public RabbitMqAdapterReceiver(IRabbitMqConnectorFactory rmqConnectorFactory, QueueId queueId, IQueueDataAdapter<RabbitMqMessage, IBatchContainer> dataAdapter, TimeSpan cacheFillingTimeout)
         {
             _rmqConnectorFactory = rmqConnectorFactory;
             _queueId = queueId;
-            _serializer = serializer;
+            _dataAdapter = dataAdapter;
             _cacheFillingTimeout = cacheFillingTimeout;
             _logger = _rmqConnectorFactory.LoggerFactory.CreateLogger($"{typeof(RabbitMqAdapterReceiver).FullName}.{queueId}");
             _sequenceId = 0;
@@ -55,7 +55,7 @@ namespace Orleans.Streams
                 if (item == null) break;
                 try
                 {
-                    batch.Add(RabbitMqDataAdapter.FromQueueMessage(_serializer, item.Body, _sequenceId++, item.DeliveryTag));
+                    batch.Add(_dataAdapter.FromQueueMessage( new RabbitMqMessage { Body = item.Body }, _sequenceId++));
                 }
                 catch (Exception ex)
                 {
@@ -70,8 +70,8 @@ namespace Orleans.Streams
         {
             foreach (var msg in messages)
             {
-                var failed = ((RabbitMqBatchContainer) msg).DeliveryFailure;
-                var tag = ((RabbitMqBatchContainer) msg).DeliveryTag;
+                var failed = ((RabbitMqBatchContainer)msg).DeliveryFailure;
+                var tag = ((RabbitMqBatchContainer)msg).DeliveryTag;
                 if (failed)
                 {
                     _logger.LogDebug($"MessagesDeliveredAsync NACK #{tag} {msg.SequenceToken}");

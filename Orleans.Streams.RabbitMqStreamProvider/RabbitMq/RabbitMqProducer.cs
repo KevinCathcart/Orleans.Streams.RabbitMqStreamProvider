@@ -82,7 +82,7 @@ namespace Orleans.Streams.RabbitMq
             _connection.Dispose();
         }
 
-        public Task SendAsync(string exchange, string routingKey, byte[] message, bool shouldConfirm, bool persistent)
+        public Task SendAsync(RabbitMqMessage message)
         {
             var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             try
@@ -90,20 +90,20 @@ namespace Orleans.Streams.RabbitMq
                 _connection.Logger.LogDebug($"RabbitMqProducer: calling Send on thread {Thread.CurrentThread.Name}.");
                 
                 var basicProperties = _connection.Channel.CreateBasicProperties();
+                Bind(basicProperties, message);
                 basicProperties.MessageId = Guid.NewGuid().ToString();
-                basicProperties.Persistent = persistent;
 
                 var channel = _connection.Channel;
-                if (shouldConfirm)
+                if (message.ShouldConfirmPublish)
                 {
                     var seqNo = _connection.Channel.NextPublishSeqNo;
                     var mif = new MessageInFlight(tcs, channel, this);
                     this.AddMessageInFlight(mif, TimeSpan.FromSeconds(10));
                 }
 
-                channel.BasicPublish(exchange, routingKey, true, basicProperties, message);
+                channel.BasicPublish(message.Exchange, message.RoutingKey, true, basicProperties, message.Body);
                 
-                if (!shouldConfirm)
+                if (!message.ShouldConfirmPublish)
                 {
                     return Task.CompletedTask;
                 }
@@ -113,6 +113,26 @@ namespace Orleans.Streams.RabbitMq
                 tcs.SetException(new RabbitMqException("RabbitMqProducer: Send failed!", ex));
             }
             return tcs.Task;
+        }
+
+        private void Bind(IBasicProperties basicProperties, RabbitMqMessage message)
+        {
+            // Unconditionally set boolean properties, because they are always sent.
+            basicProperties.Persistent = message.Persistent;
+
+            if (message.AppId != null) basicProperties.AppId = message.AppId;
+            if (message.ClusterId != null) basicProperties.ClusterId = message.ClusterId;
+            if (message.ContentEncoding != null) basicProperties.ContentEncoding = message.ContentEncoding;
+            if (message.ContentType != null) basicProperties.ContentType = message.ContentType;
+            if (message.CorrelationId != null) basicProperties.CorrelationId = message.CorrelationId;
+            if (message.Expiration != null) basicProperties.Expiration = message.Expiration;
+            if (message.Headers != null) basicProperties.Headers = message.Headers;
+            if (message.MessageId != null) basicProperties.MessageId = message.MessageId;
+            if (message.Priority != null) basicProperties.Priority = message.Priority.Value;
+            if (message.ReplyTo != null) basicProperties.ReplyTo = message.ReplyTo;
+            if (message.Timestamp != null) basicProperties.Timestamp = new AmqpTimestamp(message.Timestamp.Value);
+            if (message.Type != null) basicProperties.Type = message.Type;
+            if (message.UserId != null) basicProperties.UserId = message.UserId;
         }
 
         internal void AddMessageInFlight(MessageInFlight msg, TimeSpan timeout)

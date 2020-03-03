@@ -21,7 +21,7 @@ namespace Orleans.Streams.RabbitMq
 
     internal interface IRabbitMqProducer : IDisposable
     {
-        Task SendAsync(string exchange, string routingKey, byte[] message, bool shouldConfirm, bool persistent);
+        Task SendAsync(RabbitMqMessage message);
     }
 
     public interface ITopologyProvider
