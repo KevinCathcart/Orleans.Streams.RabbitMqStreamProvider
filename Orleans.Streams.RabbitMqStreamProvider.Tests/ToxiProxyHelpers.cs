@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Toxiproxy.Net;
 using Toxiproxy.Net.Toxics;
 
@@ -8,10 +10,15 @@ namespace RabbitMqStreamTests
     {
         private const string RmqProxyName = "RMQ";
         private const int RmqPort = 5672;
-        public const int RmqProxyPort = 56720;
+        private const int RmqProxyPort = 56720;
+        public static int ClientPort => CanRunProxy ? RmqProxyPort : RmqPort;
+
+        public static bool CanRunProxy => RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && RuntimeInformation.OSArchitecture == Architecture.X64;
 
         public static Process StartProxy()
         {
+            if (!CanRunProxy) return null;
+
             StopProxyIfRunning();
 
             var proxyProcess = new Process
@@ -24,7 +31,7 @@ namespace RabbitMqStreamTests
             {
                 Name = RmqProxyName,
                 Enabled = true,
-                Listen = $"localhost:{RmqProxyPort}",
+                Listen = $"localhost:{ClientPort}",
                 Upstream = $"localhost:{RmqPort}"
             }).GetAwaiter().GetResult();
 

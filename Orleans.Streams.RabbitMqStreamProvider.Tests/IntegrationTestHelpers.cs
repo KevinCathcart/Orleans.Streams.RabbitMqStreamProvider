@@ -21,17 +21,17 @@ namespace RabbitMqStreamTests
             var aggregator = cluster.GrainFactory.GetGrain<IAggregatorGrain>(Guid.Empty);
             await aggregator.CleanUp(); // has to be done here, because the sender is also accessing the aggregator
 
-            using (var connection = new Connection(resetAllToxicsAndProxiesOnClose: true))
+            using (var connection = GetConnectionIfNeeded(setupProxyForSender))
             {
-                setupProxyForSender(connection);
+                setupProxyForSender?.Invoke(connection);
 
                 var sender = cluster.GrainFactory.GetGrain<ISenderGrain>(Guid.Empty);
                 await Task.WhenAll(messages.Select(msg => sender.SendMessage(msg.AsImmutable(), serializer)));
             }
 
-            using (var connection = new Connection(resetAllToxicsAndProxiesOnClose: true))
+            using (var connection = GetConnectionIfNeeded(setupProxyForReceiver))
             {
-                setupProxyForReceiver(connection);
+                setupProxyForReceiver?.Invoke(connection);
 
                 await cluster.StartPullingAgents();
 
@@ -55,9 +55,9 @@ namespace RabbitMqStreamTests
             var aggregator = cluster.GrainFactory.GetGrain<IAggregatorGrain>(Guid.Empty);
             await aggregator.CleanUp(); // has to be done here, because the sender is also accessing the aggregator
 
-            using (var connection = new Connection(resetAllToxicsAndProxiesOnClose: true))
+            using (var connection = GetConnectionIfNeeded(setupProxy))
             {
-                setupProxy(connection);
+                setupProxy?.Invoke(connection);
 
                 var sender = cluster.GrainFactory.GetGrain<ISenderGrain>(Guid.Empty);
                 await Task.WhenAll(messages.Select(msg => sender.SendMessage(msg.AsImmutable(), serializer)));
@@ -72,6 +72,15 @@ namespace RabbitMqStreamTests
                 Assert.IsTrue(await AllMessagesSentAndDelivered(aggregator, messages), await PrintError(aggregator, messages));
                 Assert.AreEqual(cluster.Silos.Count(), await aggregator.GetProcessingSilosCount(), "Silo count mismatch!");
             }
+        }
+
+        private static Connection GetConnectionIfNeeded(Action<Connection> setupProxy)
+        {
+            if(ToxiProxyHelpers.CanRunProxy && setupProxy != null)
+            {
+                return new Connection(resetAllToxicsAndProxiesOnClose: true);
+            }
+            return null;
         }
 
         private static async Task<bool> AllMessagesSentAndDelivered(IAggregatorGrain aggregator, Message[] messages)

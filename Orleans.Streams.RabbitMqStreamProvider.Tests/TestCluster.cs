@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Orleans;
+using Orleans.Configuration;
 using Orleans.Hosting;
 using Orleans.Providers.Streams.Common;
 using Orleans.Runtime;
@@ -56,7 +57,7 @@ namespace RabbitMqStreamTests
                 .AddMemoryGrainStorage("PubSubStore")
                 .AddRabbitMqStream(Globals.StreamProviderNameDefault, configurator =>
                 {
-                    configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.RmqProxyPort,
+                    configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.ClientPort,
                         virtualHost: "/", user: "guest", password: "guest", queueName: Globals.StreamNameSpaceDefault);
                     configurator.ConfigureCacheSize(100);
                     configurator.ConfigureStreamPubSub(StreamPubSubType.ImplicitOnly);
@@ -69,7 +70,7 @@ namespace RabbitMqStreamTests
                 .AddRabbitMqStream(Globals.StreamProviderNameProtoBuf, configurator =>
                 {
                     configurator.ConfigureQueueDataAdapter(ProtoBufDataAdapter.Create);
-                    configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.RmqProxyPort,
+                    configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.ClientPort,
                         virtualHost: "/", user: "guest", password: "guest", queueName: Globals.StreamNameSpaceProtoBuf);
                     configurator.ConfigureCacheSize(100);
                     configurator.ConfigureStreamPubSub(StreamPubSubType.ImplicitOnly);
@@ -85,7 +86,8 @@ namespace RabbitMqStreamTests
                 })
                 .ConfigureLogging(log => log
                     .ClearProviders()
-                    .SetMinimumLevel(LogLevel.Trace)
+                    .SetMinimumLevel(LogLevel.Information)
+                    .AddFilter("Orleans.Streams", LogLevel.Debug)
                     .AddConsole()
                     .AddDebug());
         }
@@ -95,13 +97,13 @@ namespace RabbitMqStreamTests
             clientBuilder
                 .AddRabbitMqStream(Globals.StreamProviderNameDefault, configurator =>
                 {
-                    configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.RmqProxyPort,
+                    configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.ClientPort,
                         virtualHost: "/", user: "guest", password: "guest", queueName: Globals.StreamNameSpaceDefault);
                 })
                 .AddRabbitMqStream(Globals.StreamProviderNameProtoBuf, configurator =>
                 {
                     configurator.ConfigureQueueDataAdapter(ProtoBufDataAdapter.Create);
-                    configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.RmqProxyPort,
+                    configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.ClientPort,
                         virtualHost: "/", user: "guest", password: "guest", queueName: Globals.StreamNameSpaceProtoBuf);
                 })
                 .Configure<ClientMessagingOptions>(options =>

@@ -153,6 +153,10 @@ namespace RabbitMqStreamTests
         [OneTimeSetUp]
         public static async Task ClassInitialize()
         {
+            if(!CanRunProxy)
+            {
+                Assert.Ignore("Resiliency tests not enabled on this platform");
+            }
             // ToxiProxy
             _proxyProcess = StartProxy();
 
@@ -169,7 +173,7 @@ namespace RabbitMqStreamTests
         public static void ClassCleanup()
         {
             // close first to avoid a case where Silo hangs, I stop the test and the proxy process keeps running
-            _proxyProcess.Terminate();
+            _proxyProcess?.Terminate();
 
             _cluster.Dispose();
         }

@@ -14,8 +14,8 @@ namespace RabbitMqStreamTests
         public async Task TestConcurrentProcessingWithPrefilledQueue()
         {
             await _cluster.TestRmqStreamProviderWithPrefilledQueue(
-                setupProxyForReceiver: conn => { },
-                setupProxyForSender: conn => { },
+                setupProxyForReceiver: null,
+                setupProxyForSender: null,
                 nMessages: 1000,
                 itersToWait: 20);
         }
@@ -24,7 +24,7 @@ namespace RabbitMqStreamTests
         public async Task TestConcurrentProcessingOnFly()
         {
             await _cluster.TestRmqStreamProviderOnFly(
-                setupProxy: conn => { },
+                setupProxy: null,
                 nMessages: 1000,
                 itersToWait: 20);
         }
@@ -69,7 +69,7 @@ namespace RabbitMqStreamTests
         public static void ClassCleanup()
         {
             // close first to avoid a case where Silo hangs, I stop the test and the proxy process keeps running
-            _proxyProcess.Terminate();
+            _proxyProcess?.Terminate();
 
             _cluster.Dispose();
         }
