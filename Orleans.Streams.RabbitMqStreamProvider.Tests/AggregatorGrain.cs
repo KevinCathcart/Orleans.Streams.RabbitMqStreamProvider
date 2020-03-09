@@ -52,7 +52,10 @@ namespace RabbitMqStreamTests
         public Task MessageReceived(Immutable<Message> message)
         {
             _logger.LogInformation($"MessageReceived #{message.Value.Id} [{RuntimeIdentity}],[{IdentityString}] from thread {Thread.CurrentThread.Name}");
-            _receivedMessages.Add(message.Value.Id, message.Value);
+            if (!_receivedMessages.ContainsKey(message.Value.Id))
+            {
+                _receivedMessages.Add(message.Value.Id, message.Value);
+            }
             return Task.CompletedTask;
         }
 
