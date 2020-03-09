@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Orleans.TestingHost;
 using static RabbitMqStreamTests.ToxiProxyHelpers;
 
 namespace RabbitMqStreamTests
@@ -56,19 +57,21 @@ namespace RabbitMqStreamTests
             _proxyProcess = StartProxy();
 
             // Orleans cluster
-            _cluster = await TestCluster.Create();
+            _cluster = new TestClusterBuilder()
+                .AddSiloBuilderConfigurator<TestClusterConfigurator>()
+                .AddClientBuilderConfigurator<TestClusterConfigurator>()
+                .Build();
 
-            // try to wait little longer in case everything is slow
-            await Task.Delay(TimeSpan.FromMinutes(1));
+            await _cluster.DeployAsync();
         }
 
         [OneTimeTearDown]
-        public static async Task ClassCleanup()
+        public static void ClassCleanup()
         {
             // close first to avoid a case where Silo hangs, I stop the test and the proxy process keeps running
             _proxyProcess.Terminate();
 
-            await _cluster.Shutdown();
+            _cluster.Dispose();
         }
 
         #endregion

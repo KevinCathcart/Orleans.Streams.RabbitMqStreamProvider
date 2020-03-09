@@ -1,42 +1,28 @@
 ﻿using System;
-using System.Net;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Orleans;
-using Orleans.Configuration;
 using Orleans.Hosting;
 using Orleans.Providers.Streams.Common;
 using Orleans.Runtime;
 using Orleans.Streams;
+using Orleans.TestingHost;
 
 namespace RabbitMqStreamTests
 {
-    public class TestCluster
+    public static class TestClusterExtensions
     {
-        private readonly ISiloHost _primarySilo;
-        private readonly ISiloHost _secondarySilo;
-        private readonly IClusterClient _client;
-
-        private TestCluster(ISiloHost primarySilo, ISiloHost secondarySilo, IClusterClient client)
+        public static async Task StartPullingAgents(this TestCluster cluster)
         {
-            _primarySilo = primarySilo;
-            _secondarySilo = secondarySilo;
-            _client = client;
-        }
-
-        public ISiloHost[] Silos => new[] { _primarySilo, _secondarySilo };
-        public IGrainFactory GrainFactory => _client;
-
-        public async Task StartPullingAgents()
-        {
-            await _client
+            await cluster.Client
                 .GetGrain<IManagementGrain>(0)
                 .SendControlCommandToProvider(
                     typeof(PersistentStreamProvider).FullName,
                     Globals.StreamProviderNameDefault,
                     (int)PersistentStreamProviderCommand.StartAgents);
 
-            await _client
+            await cluster.Client
                 .GetGrain<IManagementGrain>(0)
                 .SendControlCommandToProvider(
                     typeof(PersistentStreamProvider).FullName,
@@ -44,77 +30,29 @@ namespace RabbitMqStreamTests
                     (int)PersistentStreamProviderCommand.StartAgents);
         }
 
-        public async Task StopPullingAgents()
+        public static async Task StopPullingAgents(this TestCluster cluster)
         {
-            await _client
+            await cluster.Client
                 .GetGrain<IManagementGrain>(0)
                 .SendControlCommandToProvider(
                     typeof(PersistentStreamProvider).FullName,
                     Globals.StreamProviderNameDefault,
                     (int)PersistentStreamProviderCommand.StopAgents);
 
-            await _client
+            await cluster.Client
                 .GetGrain<IManagementGrain>(0)
                 .SendControlCommandToProvider(
                     typeof(PersistentStreamProvider).FullName,
                     Globals.StreamProviderNameProtoBuf,
                     (int)PersistentStreamProviderCommand.StopAgents);
-        }
-
-        public static async Task<TestCluster> Create()
-        {
-            var primarySilo = new SiloHostBuilder()
-                .UseLocalhostClustering(siloPort: 11111, gatewayPort: 30000)
-                .Configure<ClusterMembershipOptions>(options =>
-                {
-                    options.UseLivenessGossip = true;
-                    options.ProbeTimeout = TimeSpan.FromSeconds(5);
-                    options.NumMissedProbesLimit = 3;
-                })
-                .ConfigureStreamsAndLogging()
-                .Build();
-
-            var secondarySilo = new SiloHostBuilder()
-                .UseLocalhostClustering(siloPort: 11112, gatewayPort: 30001,
-                    primarySiloEndpoint: new IPEndPoint(IPAddress.Loopback, EndpointOptions.DEFAULT_SILO_PORT))
-                .Configure<ClusterMembershipOptions>(options =>
-                {
-                    options.UseLivenessGossip = true;
-                    options.ProbeTimeout = TimeSpan.FromSeconds(5);
-                    options.NumMissedProbesLimit = 3;
-                })
-                .ConfigureStreamsAndLogging()
-                .Build();
-
-            var client = new ClientBuilder()
-                .UseLocalhostClustering(gatewayPorts: new[] { 30000, 30001 })
-                .ConfigureStreamsAndLogging()
-                .Build();
-            
-            await primarySilo.StartAsync();
-            await secondarySilo.StartAsync();
-
-            // wait for the cluster to stabilize; otherwise only one silo could send & process all messages
-            await Task.Delay(TimeSpan.FromMinutes(1));
-
-            await client.Connect();
-
-            return new TestCluster(primarySilo, secondarySilo, client);
-        }
-
-        public async Task Shutdown()
-        {
-            await _client.Close();
-            await _secondarySilo.StopAsync();
-            await _primarySilo.StopAsync();
         }
     }
 
-    internal static class ClusterBuilderExtentions
+    public class TestClusterConfigurator : ISiloConfigurator, IClientBuilderConfigurator
     {
-        public static ISiloHostBuilder ConfigureStreamsAndLogging(this ISiloHostBuilder builder)
+        public void Configure(ISiloBuilder siloBuilder)
         {
-            return builder
+            siloBuilder
                 .AddMemoryGrainStorage("PubSubStore")
                 .AddRabbitMqStream(Globals.StreamProviderNameDefault, configurator =>
                 {
@@ -148,9 +86,9 @@ namespace RabbitMqStreamTests
                     .AddDebug());
         }
 
-        public static IClientBuilder ConfigureStreamsAndLogging(this IClientBuilder builder)
+        public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
         {
-            return builder
+            clientBuilder
                 .AddRabbitMqStream(Globals.StreamProviderNameDefault, configurator =>
                 {
                     configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.RmqProxyPort,

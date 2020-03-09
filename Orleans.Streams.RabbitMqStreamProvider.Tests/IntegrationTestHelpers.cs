@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Orleans.Concurrency;
+using Orleans.TestingHost;
 using Toxiproxy.Net;
 
 namespace RabbitMqStreamTests
@@ -60,7 +61,7 @@ namespace RabbitMqStreamTests
 
                 var sender = cluster.GrainFactory.GetGrain<ISenderGrain>(Guid.Empty);
                 await Task.WhenAll(messages.Select(msg => sender.SendMessage(msg.AsImmutable(), serializer)));
-            
+
                 int iters = 0;
                 while (!await AllMessagesSentAndDelivered(aggregator, messages) && iters < itersToWait)
                 {
