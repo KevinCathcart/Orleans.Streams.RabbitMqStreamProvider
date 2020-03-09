@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 
 namespace Orleans.Streams.RabbitMq
 {
@@ -11,6 +13,8 @@ namespace Orleans.Streams.RabbitMq
         private readonly IRabbitMqConnector _connection;
         private readonly RabbitMqQueueProperties _queueProperties;
         private readonly DeclarationHelper _declarationHelper;
+
+        private readonly ConcurrentQueue<RabbitMqMessage> queue = new ConcurrentQueue<RabbitMqMessage>();
 
         public RabbitMqConsumer(IRabbitMqConnector connection, string queueName, ITopologyProvider topologyProvider)
         {
@@ -37,7 +41,7 @@ namespace Orleans.Streams.RabbitMq
         {
             try
             {
-                if(_connection.Logger.IsEnabled(LogLevel.Debug)) _connection.Logger.LogDebug($"RabbitMqConsumer: calling Ack on thread {Thread.CurrentThread.Name}.");
+                if (_connection.Logger.IsEnabled(LogLevel.Debug)) _connection.Logger.LogDebug($"RabbitMqConsumer: calling Ack on thread {Thread.CurrentThread.Name}.");
 
                 var currentChannel = _connection.Channel;
                 if (currentChannel == null) return; // Has been disposed
@@ -76,7 +80,7 @@ namespace Orleans.Streams.RabbitMq
                     return;
                 }
 
-                currentChannel.BasicNack(deliveryTag, multiple:false, requeue);
+                currentChannel.BasicNack(deliveryTag, multiple: false, requeue);
             }
             catch (Exception ex)
             {
@@ -84,28 +88,18 @@ namespace Orleans.Streams.RabbitMq
             }
         }
 
-        public Task<RabbitMqMessage> ReceiveAsync()
+        public async Task<RabbitMqMessage> ReceiveAsync()
         {
-            return _connection.RunOnScheduler(self => ((RabbitMqConsumer)self).ReceiveImpl(), this);
-        }
-        private RabbitMqMessage ReceiveImpl()
-        {
-            try
+            if (!queue.TryDequeue(out var result))
             {
-                IModel currentChannel = _connection.Channel;
-                if (currentChannel == null) return null; // Has been disposed
-                BasicGetResult result = currentChannel.BasicGet(_queueProperties.Name, false);
-                if (result == null) return null;
-                return Convert(result, currentChannel);
+                // if we are out of messages, it is probably just that we are all caught up, but
+                // we call EnsureChannelAvailable, to ensure the channel is open.
+                await _connection.RunOnScheduler(state => ((IRabbitMqConnector)state).EnsureChannelAvailable(), _connection);
             }
-            catch (Exception ex)
-            {
-                _connection.Logger.LogError(ex, "RabbitMqConsumer: failed to call Get!");
-                return null;
-            }
+            return result;
         }
 
-        private RabbitMqMessage Convert(BasicGetResult result, object channel)
+        private RabbitMqMessage Convert(BasicDeliverEventArgs result, object channel)
         {
             return new RabbitMqMessage
             {
@@ -140,6 +134,16 @@ namespace Orleans.Streams.RabbitMq
                 _declarationHelper.Clear();
                 _declarationHelper.DeclareQueue(_queueProperties.Name, channel);
             }
+
+            channel.BasicQos(0, _queueProperties.PrefetchLimit, false);
+
+            var consumer = new EventingBasicConsumer(channel);
+            consumer.Received += (ch, ea) =>
+            {
+                var msg = Convert(ea, ((IBasicConsumer)ch).Model);
+                queue.Enqueue(msg);
+            };
+            channel.BasicConsume(_queueProperties.Name, false, consumer);
         }
     }
 }

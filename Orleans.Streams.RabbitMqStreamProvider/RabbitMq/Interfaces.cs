@@ -23,6 +23,8 @@ namespace Orleans.Streams.RabbitMq
         event EventHandler<BasicAckEventArgs> BasicAcks;
         event EventHandler<BasicNackEventArgs> BasicNacks;
         event EventHandler<ModelCreatedEventArgs> ModelCreated;
+
+        void EnsureChannelAvailable();
     }
 
     public interface IRabbitMqConsumer : IDisposable

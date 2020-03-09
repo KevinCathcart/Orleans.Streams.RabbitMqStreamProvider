@@ -32,7 +32,7 @@ namespace Orleans.Streams.RabbitMq
         {
             get
             {
-                EnsureChannel();
+                EnsureChannelAvailable();
                 return _channel;
             }
         }
@@ -46,7 +46,7 @@ namespace Orleans.Streams.RabbitMq
             Scheduler = new ConcurrentExclusiveSchedulerPair().ExclusiveScheduler;
         }
 
-        private void EnsureChannel()
+        public void EnsureChannelAvailable()
         {
             if (_disposed)
             {

@@ -14,6 +14,7 @@ namespace Orleans.Streams.RabbitMq
         public bool Durable { get; set; }
         public bool Exclusive { get; set; }
         public bool AutoDelete { get; set; }
+        public ushort PrefetchLimit { get; set; }
         public IDictionary<string, object> Arguments { get; set; }
         public List<RabbitMqBinding> Bindings { get; set; }
     }
@@ -76,10 +77,12 @@ namespace Orleans.Streams.RabbitMq
     public class DefaultTopologyProvider : ITopologyProvider
     {
         private readonly RabbitMqOptions options;
+        private readonly SimpleQueueCacheOptions cacheOptions;
 
-        public DefaultTopologyProvider(string providerName, IOptionsMonitor<RabbitMqOptions> optionsAccessor)
+        public DefaultTopologyProvider(string providerName, IOptionsMonitor<RabbitMqOptions> optionsAccessor, IOptionsMonitor<SimpleQueueCacheOptions> cacheOptionsAccessor)
         {
             this.options = optionsAccessor.Get(providerName);
+            this.cacheOptions = cacheOptionsAccessor.Get(providerName);
         }
 
         public virtual RabbitMqQueueProperties GetQueueProperties(string queueName)
@@ -95,6 +98,7 @@ namespace Orleans.Streams.RabbitMq
                 Durable = true,
                 Exclusive = false,
                 AutoDelete = false,
+                PrefetchLimit = (ushort)cacheOptions.CacheSize
             };
         }
 
