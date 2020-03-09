@@ -79,6 +79,10 @@ namespace RabbitMqStreamTests
                             options.GetQueueMsgsTimerPeriod = TimeSpan.FromMilliseconds(100);
                         }));
                 })
+                .Configure<SiloMessagingOptions>(options=>
+                {
+                    options.ResponseTimeout = TimeSpan.FromMinutes(5);
+                })
                 .ConfigureLogging(log => log
                     .ClearProviders()
                     .SetMinimumLevel(LogLevel.Trace)
@@ -99,6 +103,10 @@ namespace RabbitMqStreamTests
                     configurator.ConfigureQueueDataAdapter(ProtoBufDataAdapter.Create);
                     configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.RmqProxyPort,
                         virtualHost: "/", user: "guest", password: "guest", queueName: Globals.StreamNameSpaceProtoBuf);
+                })
+                .Configure<ClientMessagingOptions>(options =>
+                {
+                    options.ResponseTimeout = TimeSpan.FromMinutes(5);
                 })
                 .ConfigureLogging(log => log
                     .ClearProviders()
