@@ -6,72 +6,72 @@ using Orleans.TestingHost;
 using Toxiproxy.Net.Toxics;
 using static RabbitMqStreamTests.ToxiProxyHelpers;
 
-// Note: receiveng seems to be more sensitive to network errors than sending, thus reducing latency in some of the test cases
-// Note: when running tests individually they pass; when running in batch, it fails with timeout + there is a problem with shutting down silo -> ignore the test class
-
+// Note: receiving seems to be more sensitive to network errors than sending, thus reducing latency in some of the test cases
 namespace RabbitMqStreamTests
 {
-    [Ignore("not stable")]
     [TestFixture]
     public class RmqResiliencyTests
     {
-        #region Timeout
+        #region LimitData
+
+        const int LargeDataLimit = 30000; //used for connections that include message data
+        const int SmallDataLimit = 3000; // used for connections that are mostly acknowledgements, etc.
 
         [Test]
-        public async Task TestRmqTimeoutUpstreamWhileSending()
+        public async Task TestRmqLimitDataUpstreamWhileSending()
         {
             // tests send call
             await _cluster.TestRmqStreamProviderWithPrefilledQueue(
-                conn => AddTimeoutToRmqProxy(conn, ToxicDirection.UpStream, 0.9, 100),
+                conn => AddLimitDataToRmqProxy(conn, ToxicDirection.UpStream, 1.0, LargeDataLimit), //large data limit
                 conn => { },
                 1000, 10);
         }
 
         [Test]
-        public async Task TestRmqTimeoutDownstreamWhileSending()
+        public async Task TestRmqLimitDataDownstreamWhileSending()
         {
             // tests (n)ack from the rmq to the client
             await _cluster.TestRmqStreamProviderWithPrefilledQueue(
-                conn => AddTimeoutToRmqProxy(conn, ToxicDirection.DownStream, 0.9, 100),
+                conn => AddLimitDataToRmqProxy(conn, ToxicDirection.DownStream, 1.0, SmallDataLimit),
                 conn => { },
                 1000, 10);
         }
 
         [Test]
-        public async Task TestRmqTimeoutUpstreamWhileReceiving()
+        public async Task TestRmqLimitDataUpstreamWhileReceiving()
         {
             // tests (n)ack from the client to the rmq
             await _cluster.TestRmqStreamProviderWithPrefilledQueue(
                 conn => { },
-                conn => AddTimeoutToRmqProxy(conn, ToxicDirection.UpStream, 0.9, 100),
+                conn => AddLimitDataToRmqProxy(conn, ToxicDirection.UpStream, 1.0, SmallDataLimit),
                 1000, 10);
         }
 
         [Test]
-        public async Task TestRmqTimeoutDownstreamWhileReceiving()
+        public async Task TestRmqLimitDataDownstreamWhileReceiving()
         {
             // tests receive call
             await _cluster.TestRmqStreamProviderWithPrefilledQueue(
                 conn => { },
-                conn => AddTimeoutToRmqProxy(conn, ToxicDirection.DownStream, 0.9, 100),
+                conn => AddLimitDataToRmqProxy(conn, ToxicDirection.DownStream, 1.0, LargeDataLimit),
                 1000, 10);
         }
 
         [Test]
-        public async Task TestRmqTimeoutUpstreamOnFly()
+        public async Task TestRmqLimitDataUpstreamOnFly()
         {
             // tests (n)ack from the client to the rmq
             await _cluster.TestRmqStreamProviderOnFly(
-                conn => AddTimeoutToRmqProxy(conn, ToxicDirection.UpStream, 0.9, 100),
+                conn => AddLimitDataToRmqProxy(conn, ToxicDirection.UpStream, 1.0, LargeDataLimit),
                 1000, 60);
         }
 
         [Test]
-        public async Task TestRmqTimeoutDownstreamOnFly()
+        public async Task TestRmqLimitDataDownstreamOnFly()
         {
             // tests receive call
             await _cluster.TestRmqStreamProviderOnFly(
-                conn => AddTimeoutToRmqProxy(conn, ToxicDirection.DownStream, 0.9, 100),
+                conn => AddLimitDataToRmqProxy(conn, ToxicDirection.DownStream, 1.0, LargeDataLimit),
                 1000, 60);
         }
 
@@ -106,7 +106,7 @@ namespace RabbitMqStreamTests
             await _cluster.TestRmqStreamProviderWithPrefilledQueue(
                 conn => { },
                 conn => AddLatencyToRmqProxy(conn, ToxicDirection.UpStream, 1.0, 3000, 3000),
-                100, /*60*/int.MaxValue);
+                100, 60);
         }
 
         [Test]

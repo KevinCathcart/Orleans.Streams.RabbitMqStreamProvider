@@ -46,17 +46,17 @@ namespace RabbitMqStreamTests
             }
         }
 
-        public static void AddTimeoutToRmqProxy(Connection connection, ToxicDirection direction, double toxicity, int timeout)
+        public static void AddLimitDataToRmqProxy(Connection connection, ToxicDirection direction, double toxicity, int timeout)
         {
             var proxy = connection.Client().FindProxyAsync(RmqProxyName).GetAwaiter().GetResult();
-            proxy.AddAsync(new TimeoutToxic
+            proxy.AddAsync(new LimitDataToxic
             {
                 Name = "Timeout",
                 Toxicity = toxicity,
                 Stream = direction,
-                Attributes = new TimeoutToxic.ToxicAttributes
+                Attributes = new LimitDataToxic.ToxicAttributes
                 {
-                    Timeout = timeout
+                    Bytes = timeout
                 }
             }).GetAwaiter().GetResult();
             proxy.UpdateAsync().GetAwaiter().GetResult();
