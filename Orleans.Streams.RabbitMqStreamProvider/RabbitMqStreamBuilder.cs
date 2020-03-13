@@ -18,15 +18,31 @@ namespace Orleans.Hosting
         {
             configurator.ConfigureComponent(factory);
         }
+        public static void ConfigureStreamQueueMapper<TStreamQueueMapper>(this IRabbitMqStreamConfigurator configurator)
+            where TStreamQueueMapper : IStreamQueueMapper
+        {
+            configurator.ConfigureComponent<IStreamQueueMapper>((sp, n) => ActivatorUtilities.CreateInstance<TStreamQueueMapper>(sp));
+        }
 
         public static void ConfigureTopologyProvider(this IRabbitMqStreamConfigurator configurator, Func<IServiceProvider, string, ITopologyProvider> factory)
         {
             configurator.ConfigureComponent(factory);
         }
+        public static void ConfigureTopologyProvider<TTopologyProvider>(this IRabbitMqStreamConfigurator configurator)
+            where TTopologyProvider : ITopologyProvider
+        {
+            configurator.ConfigureComponent<ITopologyProvider>((sp, n) => ActivatorUtilities.CreateInstance<TTopologyProvider>(sp));
+        }
 
         public static void ConfigureQueueDataAdapter(this IRabbitMqStreamConfigurator configurator, Func<IServiceProvider, string, IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>>> factory)
         {
             configurator.ConfigureComponent(factory);
+        }
+
+        public static void ConfigureQueueDataAdapter<TQueueDataAdapter>(this IRabbitMqStreamConfigurator configurator)
+            where TQueueDataAdapter : IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>>
+        {
+            configurator.ConfigureComponent<IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>>>((sp, n) => ActivatorUtilities.CreateInstance<TQueueDataAdapter>(sp));
         }
 
         public static void ConfigureRabbitMq(this IRabbitMqStreamConfigurator configurator, Action<OptionsBuilder<RabbitMqOptions>> configureOptions)
