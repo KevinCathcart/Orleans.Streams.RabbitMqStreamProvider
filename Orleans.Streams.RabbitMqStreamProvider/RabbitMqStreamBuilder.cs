@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Orleans.ApplicationParts;
 using Orleans.Configuration;
 using Orleans.Streams;
@@ -28,19 +29,9 @@ namespace Orleans.Hosting
             configurator.ConfigureComponent(factory);
         }
 
-        public static void ConfigureRabbitMq(this IRabbitMqStreamConfigurator configurator, string host, int port, string virtualHost, string user, string password, string queueName, bool useQueuePartitioning = RabbitMqOptions.DefaultUseQueuePartitioning, int numberOfQueues = RabbitMqOptions.DefaultNumberOfQueues)
+        public static void ConfigureRabbitMq(this IRabbitMqStreamConfigurator configurator, Action<OptionsBuilder<RabbitMqOptions>> configureOptions)
         {
-            configurator.Configure<RabbitMqOptions>(ob => ob.Configure(options =>
-            {
-                options.HostName = host;
-                options.Port = port;
-                options.VirtualHost = virtualHost;
-                options.UserName = user;
-                options.Password = password;
-                options.QueueNamePrefix = queueName;
-                options.UseQueuePartitioning = useQueuePartitioning;
-                options.NumberOfQueues = numberOfQueues;
-            }));
+            configurator.Configure(configureOptions);
         }
     }
 

@@ -1,24 +1,21 @@
 ﻿using System;
 using Orleans.Runtime;
 using Orleans.Streams;
+using Orleans.Streams.RabbitMq;
+using RabbitMQ.Client;
 
 namespace Orleans.Configuration
 {
     public class RabbitMqOptions
     {
-        public string HostName { get; set; }
-        public int Port { get; set; }
-        public string VirtualHost { get; set; }
-        public string UserName { get; set; }
-        public string Password { get; set; }
-
+        public ConnectionFactory Connection { get; set; } = new ConnectionFactory();
         public string QueueNamePrefix { get; set; }
         public bool UseQueuePartitioning { get; set; } = DefaultUseQueuePartitioning;
         public int NumberOfQueues { get; set; } = DefaultNumberOfQueues;
         public StreamProviderDirection Direction { get; set; } = StreamProviderDirection.ReadWrite;
 
-        public const bool DefaultUseQueuePartitioning = false;
-        public const int DefaultNumberOfQueues = 1;
+        public const bool DefaultUseQueuePartitioning = true;
+        public const int DefaultNumberOfQueues = 8;
     }
 
     public class RabbitMqOptionsValidator : IConfigurationValidator
@@ -34,12 +31,7 @@ namespace Orleans.Configuration
 
         public void ValidateConfiguration()
         {
-            if (string.IsNullOrEmpty(options.HostName)) ThrowMissing(nameof(options.HostName));
-            if (string.IsNullOrEmpty(options.VirtualHost)) ThrowMissing(nameof(options.VirtualHost));
-            if (string.IsNullOrEmpty(options.UserName)) ThrowMissing(nameof(options.UserName));
-            if (string.IsNullOrEmpty(options.Password)) ThrowMissing(nameof(options.Password));
             if (string.IsNullOrEmpty(options.QueueNamePrefix)) ThrowMissing(nameof(options.QueueNamePrefix));
-            if (options.Port <= 0) ThrowNotPositive(nameof(options.Port));
             if (options.UseQueuePartitioning && options.NumberOfQueues <= 0) ThrowNotPositive(nameof(options.NumberOfQueues));
         }
 

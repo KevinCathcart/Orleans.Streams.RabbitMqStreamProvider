@@ -38,19 +38,9 @@ namespace Orleans.Streams.RabbitMq
                     if (_connection?.IsOpen != true)
                     {
                         Logger.LogDebug("Opening a new RMQ connection...");
-                        var factory = new ConnectionFactory
-                        {
-                            HostName = _options.HostName,
-                            VirtualHost = _options.VirtualHost,
-                            Port = _options.Port,
-                            UserName = _options.UserName,
-                            Password = _options.Password,
-                            UseBackgroundThreadsForIO = true,
-                            AutomaticRecoveryEnabled = false,
-                            NetworkRecoveryInterval = TimeSpan.FromSeconds(10)
-                        };
+                        _options.Connection.AutomaticRecoveryEnabled = false;
 
-                        _connection = factory.CreateConnection();
+                        _connection = _options.Connection.CreateConnection();
                         Logger.LogDebug("Connection created.");
 
                         _connection.ConnectionShutdown += OnConnectionShutdown;

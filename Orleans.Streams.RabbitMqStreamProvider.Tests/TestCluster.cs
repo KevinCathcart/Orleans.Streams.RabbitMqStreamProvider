@@ -57,8 +57,13 @@ namespace RabbitMqStreamTests
                 .AddMemoryGrainStorage("PubSubStore")
                 .AddRabbitMqStream(Globals.StreamProviderNameDefault, configurator =>
                 {
-                    configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.ClientPort,
-                        virtualHost: "/", user: "guest", password: "guest", queueName: Globals.StreamNameSpaceDefault);
+                    configurator.ConfigureRabbitMq(ob =>
+                        ob.Configure(options =>
+                        {
+                            options.Connection.Port = ToxiProxyHelpers.ClientPort;
+                            options.QueueNamePrefix = Globals.StreamNameSpaceDefault;
+                            options.UseQueuePartitioning = false;
+                        }));
                     configurator.ConfigureCacheSize(100);
                     configurator.ConfigureStreamPubSub(StreamPubSubType.ImplicitOnly);
                     configurator.ConfigurePullingAgent(ob => ob.Configure(
@@ -70,8 +75,13 @@ namespace RabbitMqStreamTests
                 .AddRabbitMqStream(Globals.StreamProviderNameProtoBuf, configurator =>
                 {
                     configurator.ConfigureQueueDataAdapter(ProtoBufDataAdapter.Create);
-                    configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.ClientPort,
-                        virtualHost: "/", user: "guest", password: "guest", queueName: Globals.StreamNameSpaceProtoBuf);
+                    configurator.ConfigureRabbitMq(ob =>
+                        ob.Configure(options =>
+                        {
+                            options.Connection.Port = ToxiProxyHelpers.ClientPort;
+                            options.QueueNamePrefix = Globals.StreamNameSpaceProtoBuf;
+                            options.UseQueuePartitioning = false;
+                        }));
                     configurator.ConfigureCacheSize(100);
                     configurator.ConfigureStreamPubSub(StreamPubSubType.ImplicitOnly);
                     configurator.ConfigurePullingAgent(ob => ob.Configure(
@@ -97,14 +107,24 @@ namespace RabbitMqStreamTests
             clientBuilder
                 .AddRabbitMqStream(Globals.StreamProviderNameDefault, configurator =>
                 {
-                    configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.ClientPort,
-                        virtualHost: "/", user: "guest", password: "guest", queueName: Globals.StreamNameSpaceDefault);
+                    configurator.ConfigureRabbitMq(ob =>
+                        ob.Configure(options =>
+                        {
+                            options.Connection.Port = ToxiProxyHelpers.ClientPort;
+                            options.QueueNamePrefix = Globals.StreamNameSpaceDefault;
+                            options.UseQueuePartitioning = false;
+                        }));
                 })
                 .AddRabbitMqStream(Globals.StreamProviderNameProtoBuf, configurator =>
                 {
                     configurator.ConfigureQueueDataAdapter(ProtoBufDataAdapter.Create);
-                    configurator.ConfigureRabbitMq(host: "localhost", port: ToxiProxyHelpers.ClientPort,
-                        virtualHost: "/", user: "guest", password: "guest", queueName: Globals.StreamNameSpaceProtoBuf);
+                    configurator.ConfigureRabbitMq(ob =>
+                        ob.Configure(options =>
+                        {
+                            options.Connection.Port = ToxiProxyHelpers.ClientPort;
+                            options.QueueNamePrefix = Globals.StreamNameSpaceProtoBuf;
+                            options.UseQueuePartitioning = false;
+                        }));
                 })
                 .Configure<ClientMessagingOptions>(options =>
                 {
