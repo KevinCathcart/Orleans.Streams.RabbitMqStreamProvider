@@ -11,6 +11,7 @@ namespace Orleans.Streams
     {
         private readonly IRabbitMqConnectorFactory _rmqConnectorFactory;
         private readonly QueueId _queueId;
+        private readonly IStreamQueueMapper _mapper;
         private readonly IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> _dataAdapter;
         private readonly ILogger _logger;
         private long _sequenceId;
@@ -18,10 +19,11 @@ namespace Orleans.Streams
         private readonly List<PendingDelivery> pending;
         private Queue<IBatchContainer> _currentGroup;
 
-        public RabbitMqAdapterReceiver(IRabbitMqConnectorFactory rmqConnectorFactory, QueueId queueId, IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> dataAdapter)
+        public RabbitMqAdapterReceiver(IRabbitMqConnectorFactory rmqConnectorFactory, QueueId queueId, IStreamQueueMapper mapper, IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> dataAdapter)
         {
             _rmqConnectorFactory = rmqConnectorFactory;
             _queueId = queueId;
+            _mapper = mapper;
             _dataAdapter = dataAdapter;
             _logger = _rmqConnectorFactory.LoggerFactory.CreateLogger($"{typeof(RabbitMqAdapterReceiver).FullName}.{queueId}");
             _sequenceId = 0;
@@ -64,10 +66,10 @@ namespace Orleans.Streams
                 var item = await consumer.ReceiveAsync();
                 if (item == null) return false;
 
-                Queue<IBatchContainer> batches;
+                IEnumerable<IBatchContainer> batches;
                 try
                 {
-                    batches = new Queue<IBatchContainer>(_dataAdapter.FromQueueMessage(item, _sequenceId++));
+                    batches =_dataAdapter.FromQueueMessage(item, _sequenceId++);
                 }
                 catch (Exception ex)
                 {
@@ -76,20 +78,25 @@ namespace Orleans.Streams
                     continue;
                 }
 
-                if (batches.Count == 0)
+                // Filter out any decoded batches whose streams that do not belong to the queue. (Can happen with custom data adapters,
+                // and unusual typologies. If it does we don't want to try to deliver those because those messages should also appear
+                // in the correct queue, and thus would get needlessly double delivered.)
+                var filteredBatches = batches.Where(b => _mapper.GetQueueForStream(b.StreamGuid, b.StreamNamespace) == _queueId).ToList();
+
+                if (filteredBatches.Count == 0)
                 {
                     // If a RabbitMQ message maps to zero Orleans messages, then we can acknowledge it immediately.
                     await consumer.AckAsync(item.Channel, item.DeliveryTag, multiple: false);
                 }
                 else
                 {
-                    foreach (var batch in batches)
+                    foreach (var batch in filteredBatches)
                     {
                         pending.Add(new PendingDelivery(batch.SequenceToken, item.DeliveryTag, item.Channel, item.RequeueOnFailure));
                     }
                 }
 
-                _currentGroup = batches;
+                _currentGroup = new Queue<IBatchContainer>(filteredBatches);
             }
 
             return true;

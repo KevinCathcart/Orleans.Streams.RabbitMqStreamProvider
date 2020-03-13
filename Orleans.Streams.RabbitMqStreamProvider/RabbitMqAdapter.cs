@@ -19,13 +19,15 @@ namespace Orleans.Streams
     internal class RabbitMqAdapter : IQueueAdapter
     {
         private readonly IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> _dataAdapter;
+        private readonly IStreamQueueMapper _mapper;
         private readonly ThreadLocal<IRabbitMqProducer> _producer; 
         private readonly IRabbitMqConnectorFactory _rmqConnectorFactory;
 
-        public RabbitMqAdapter(RabbitMqOptions rmqOptions, IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> dataAdapter, string providerName, IRabbitMqConnectorFactory rmqConnectorFactory)
+        public RabbitMqAdapter(RabbitMqOptions rmqOptions, IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> dataAdapter, string providerName, IStreamQueueMapper mapper, IRabbitMqConnectorFactory rmqConnectorFactory)
         {
             _dataAdapter = dataAdapter;
             Name = providerName;
+            _mapper = mapper;
             _rmqConnectorFactory = rmqConnectorFactory;
             Direction = rmqOptions.Direction;
             _producer = new ThreadLocal<IRabbitMqProducer>(() => _rmqConnectorFactory.CreateProducer());
@@ -34,7 +36,7 @@ namespace Orleans.Streams
         public string Name { get; }
         public bool IsRewindable => false;
         public StreamProviderDirection Direction { get; }
-        public IQueueAdapterReceiver CreateReceiver(QueueId queueId) => new RabbitMqAdapterReceiver(_rmqConnectorFactory, queueId, _dataAdapter);
+        public IQueueAdapterReceiver CreateReceiver(QueueId queueId) => new RabbitMqAdapterReceiver(_rmqConnectorFactory, queueId, _mapper, _dataAdapter);
 
         public async Task QueueMessageBatchAsync<T>(Guid streamGuid, string streamNamespace, IEnumerable<T> events, StreamSequenceToken token, Dictionary<string, object> requestContext)
         {

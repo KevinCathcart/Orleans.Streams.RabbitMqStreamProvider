@@ -45,7 +45,7 @@ namespace Orleans.Streams
             var dataAdapter = serviceProvider.GetServiceByName<IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>>>(providerName) ??
                     RabbitMqDataAdapter.Create(serviceProvider, providerName);
 
-            _adapter = new RabbitMqAdapter(rmqOptions, dataAdapter, providerName, serviceProvider.GetRequiredServiceByName<IRabbitMqConnectorFactory>(providerName));
+            _adapter = new RabbitMqAdapter(rmqOptions, dataAdapter, providerName, _mapper, serviceProvider.GetRequiredServiceByName<IRabbitMqConnectorFactory>(providerName));
         }
 
         public Task<IQueueAdapter> CreateAdapter() => Task.FromResult(_adapter);
