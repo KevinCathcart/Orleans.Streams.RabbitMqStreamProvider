@@ -1,5 +1,6 @@
 ﻿using System;
 using Orleans.Runtime;
+using Orleans.Streams;
 
 namespace Orleans.Configuration
 {
@@ -14,8 +15,8 @@ namespace Orleans.Configuration
         public string QueueNamePrefix { get; set; }
         public bool UseQueuePartitioning { get; set; } = DefaultUseQueuePartitioning;
         public int NumberOfQueues { get; set; } = DefaultNumberOfQueues;
+        public StreamProviderDirection Direction { get; set; } = StreamProviderDirection.ReadWrite;
 
-        
         public const bool DefaultUseQueuePartitioning = false;
         public const int DefaultNumberOfQueues = 1;
     }

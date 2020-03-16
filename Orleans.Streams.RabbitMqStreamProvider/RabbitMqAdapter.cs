@@ -27,12 +27,13 @@ namespace Orleans.Streams
             _dataAdapter = dataAdapter;
             Name = providerName;
             _rmqConnectorFactory = new RabbitMqOnlineConnectorFactory(rmqOptions, loggerFactory, topologyProvider);
+            Direction = rmqOptions.Direction;
             _producer = new ThreadLocal<IRabbitMqProducer>(() => _rmqConnectorFactory.CreateProducer());
         }
 
         public string Name { get; }
         public bool IsRewindable => false;
-        public StreamProviderDirection Direction => StreamProviderDirection.ReadWrite;
+        public StreamProviderDirection Direction { get; }
         public IQueueAdapterReceiver CreateReceiver(QueueId queueId) => new RabbitMqAdapterReceiver(_rmqConnectorFactory, queueId, _dataAdapter);
 
         public async Task QueueMessageBatchAsync<T>(Guid streamGuid, string streamNamespace, IEnumerable<T> events, StreamSequenceToken token, Dictionary<string, object> requestContext)
