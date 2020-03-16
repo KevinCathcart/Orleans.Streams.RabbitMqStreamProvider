@@ -12,6 +12,7 @@ namespace Orleans.Configuration
         public string QueueNamePrefix { get; set; }
         public bool UseQueuePartitioning { get; set; } = DefaultUseQueuePartitioning;
         public int NumberOfQueues { get; set; } = DefaultNumberOfQueues;
+        public string ConnectionName { get; set; }
         public StreamProviderDirection Direction { get; set; } = StreamProviderDirection.ReadWrite;
 
         public const bool DefaultUseQueuePartitioning = true;

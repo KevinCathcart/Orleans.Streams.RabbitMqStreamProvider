@@ -40,7 +40,7 @@ namespace Orleans.Streams.RabbitMq
                         Logger.LogDebug("Opening a new RMQ connection...");
                         _options.Connection.AutomaticRecoveryEnabled = false;
 
-                        _connection = _options.Connection.CreateConnection();
+                        _connection = _options.Connection.CreateConnection(_options.ConnectionName);
                         Logger.LogDebug("Connection created.");
 
                         _connection.ConnectionShutdown += OnConnectionShutdown;
