@@ -41,7 +41,7 @@ namespace Orleans.Streams.RabbitMq
         {
             try
             {
-                if (_connection.Logger.IsEnabled(LogLevel.Debug)) _connection.Logger.LogDebug($"RabbitMqConsumer: calling Ack on thread {Thread.CurrentThread.Name}.");
+                if (_connection.Logger.IsEnabled(LogLevel.Debug)) _connection.Logger.LogDebug($"RabbitMqConsumer: calling Ack.");
 
                 var currentChannel = _connection.Channel;
                 if (currentChannel == null) return; // Has been disposed
@@ -69,7 +69,7 @@ namespace Orleans.Streams.RabbitMq
         {
             try
             {
-                if (_connection.Logger.IsEnabled(LogLevel.Debug)) _connection.Logger.LogDebug($"RabbitMqConsumer: calling Nack on thread {Thread.CurrentThread.Name}.");
+                if (_connection.Logger.IsEnabled(LogLevel.Debug)) _connection.Logger.LogDebug($"RabbitMqConsumer: calling Nack.");
 
                 var currentChannel = _connection.Channel;
                 if (currentChannel == null) return; // Has been disposed

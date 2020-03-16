@@ -98,7 +98,7 @@ namespace Orleans.Streams.RabbitMq
             var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             try
             {
-                if (_connection.Logger.IsEnabled(LogLevel.Debug)) _connection.Logger.LogDebug($"RabbitMqProducer: calling Send on thread {Thread.CurrentThread.Name}.");
+                if (_connection.Logger.IsEnabled(LogLevel.Debug)) _connection.Logger.LogDebug($"RabbitMqProducer: calling Send.");
 
                 var channel = _connection.Channel;
                 if (channel == null) throw new ObjectDisposedException(nameof(RabbitMqProducer));
