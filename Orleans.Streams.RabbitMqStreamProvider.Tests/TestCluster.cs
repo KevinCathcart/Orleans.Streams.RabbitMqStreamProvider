@@ -49,6 +49,18 @@ namespace RabbitMqStreamTests
         }
     }
 
+    public static class LoggingBuilderExtensions
+    {
+        public static ILoggingBuilder AddTestDebugLogging(this ILoggingBuilder builder)
+        {
+            return builder.ClearProviders()
+                    .SetMinimumLevel(LogLevel.Information)
+                    .AddFilter("Orleans.Streams", LogLevel.Debug)
+                    .AddConsole()
+                    .AddDebug();
+        }
+    }
+
     public class TestClusterConfigurator : ISiloConfigurator, IClientBuilderConfigurator
     {
         public void Configure(ISiloBuilder siloBuilder)
@@ -94,12 +106,7 @@ namespace RabbitMqStreamTests
                 {
                     options.ResponseTimeout = TimeSpan.FromMinutes(5);
                 })
-                .ConfigureLogging(log => log
-                    .ClearProviders()
-                    .SetMinimumLevel(LogLevel.Information)
-                    .AddFilter("Orleans.Streams", LogLevel.Debug)
-                    .AddConsole()
-                    .AddDebug());
+                .ConfigureLogging(log => log.AddTestDebugLogging());
         }
 
         public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
@@ -130,11 +137,7 @@ namespace RabbitMqStreamTests
                 {
                     options.ResponseTimeout = TimeSpan.FromMinutes(5);
                 })
-                .ConfigureLogging(log => log
-                    .ClearProviders()
-                    .SetMinimumLevel(LogLevel.Trace)
-                    .AddConsole()
-                    .AddDebug());
+                .ConfigureLogging(log => log.AddTestDebugLogging());
         }
     }
 }

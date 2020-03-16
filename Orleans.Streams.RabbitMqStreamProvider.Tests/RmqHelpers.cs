@@ -39,5 +39,26 @@ namespace RabbitMqStreamTests
                 }
             }
         }
+
+        public static void DeleteQueues(IEnumerable<string> queues)
+        {
+            var factory = new ConnectionFactory
+            {
+                HostName = "localhost",
+                VirtualHost = "/",
+                Port = 5672,
+                UserName = "guest",
+                Password = "guest"
+            };
+
+            using (var connection = factory.CreateConnection())
+            using (var channel = connection.CreateModel())
+            {
+                foreach(var queue in queues)
+                {
+                    channel.QueueDelete(queue);
+                }
+            }
+        }
     }
 }

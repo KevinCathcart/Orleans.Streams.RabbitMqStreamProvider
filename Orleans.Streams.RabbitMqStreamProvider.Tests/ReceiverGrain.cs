@@ -13,24 +13,41 @@ namespace RabbitMqStreamTests
     {
     }
 
+    public interface IProtoBufReceiverGrain : IGrainWithGuidKey
+    {
+    }
+
     [ImplicitStreamSubscription(Globals.StreamNameSpaceDefault)]
+    public class ReceiverGrain : ReceiverGrainBase, IReceiverGrain
+    {
+        public override string ProviderName => Globals.StreamProviderNameDefault;
+
+        public override string Namespace => Globals.StreamNameSpaceDefault;
+    }
+
     [ImplicitStreamSubscription(Globals.StreamNameSpaceProtoBuf)]
-    public class ReceiverGrain : Grain, IReceiverGrain
+    public class ProtoBufRecieverGrain : ReceiverGrainBase, IProtoBufReceiverGrain
+    {
+        public override string ProviderName => Globals.StreamProviderNameProtoBuf;
+
+        public override string Namespace => Globals.StreamNameSpaceProtoBuf;
+    }
+
+    public abstract class ReceiverGrainBase : Grain
     {
         private ILogger _logger;
         private StreamSubscriptionHandle<Message> _subscriptionDefault;
-        private StreamSubscriptionHandle<Message> _subscriptionProtoBuf;
+
+        public abstract string ProviderName { get; }
+        public abstract string Namespace { get; }
 
         public override async Task OnActivateAsync()
         {
             await base.OnActivateAsync();
-            _logger = ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger($"{typeof(ReceiverGrain).FullName}.{this.GetPrimaryKey()}");
+            _logger = ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger($"{GetType().FullName}.{this.GetPrimaryKey()}");
             _logger.LogInformation($"OnActivateAsync [{RuntimeIdentity}],[{IdentityString}][{this.GetPrimaryKey()}] from thread {Thread.CurrentThread.Name}");
-            _subscriptionDefault = await GetStreamProvider(Globals.StreamProviderNameDefault)
-                .GetStream<Message>(this.GetPrimaryKey(), Globals.StreamNameSpaceDefault)
-                .SubscribeAsync(OnNextAsync);
-            _subscriptionProtoBuf = await GetStreamProvider(Globals.StreamProviderNameProtoBuf)
-                .GetStream<Message>(this.GetPrimaryKey(), Globals.StreamNameSpaceProtoBuf)
+            _subscriptionDefault = await GetStreamProvider(ProviderName)
+                .GetStream<Message>(this.GetPrimaryKey(), Namespace)
                 .SubscribeAsync(OnNextAsync);
         }
 
@@ -38,7 +55,6 @@ namespace RabbitMqStreamTests
         {
             _logger.LogInformation($"OnDeactivateAsync [{RuntimeIdentity}],[{IdentityString}][{this.GetPrimaryKey()}] from thread {Thread.CurrentThread.Name}");
             await _subscriptionDefault.UnsubscribeAsync();
-            await _subscriptionProtoBuf.UnsubscribeAsync();
             await base.OnDeactivateAsync();
         }
 
