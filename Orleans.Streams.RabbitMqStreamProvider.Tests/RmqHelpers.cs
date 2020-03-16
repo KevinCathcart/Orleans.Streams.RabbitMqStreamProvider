@@ -1,4 +1,6 @@
-﻿using RabbitMQ.Client;
+﻿using System;
+using System.Collections.Generic;
+using RabbitMQ.Client;
 
 namespace RabbitMqStreamTests
 {
@@ -24,8 +26,17 @@ namespace RabbitMqStreamTests
             using (var connection = factory.CreateConnection())
             using (var channel = connection.CreateModel())
             {
-                channel.QueuePurge(Globals.StreamNameSpaceDefault);
-                channel.QueuePurge(Globals.StreamNameSpaceProtoBuf);
+                foreach (var queue in new[] { Globals.StreamNameSpaceDefault, Globals.StreamNameSpaceProtoBuf })
+                {
+                    try
+                    {
+                        channel.QueuePurge(queue);
+                    }
+                    catch (Exception)
+                    {
+                        // queue probably just not created yet, which is not an error.
+                    }
+                }
             }
         }
     }
