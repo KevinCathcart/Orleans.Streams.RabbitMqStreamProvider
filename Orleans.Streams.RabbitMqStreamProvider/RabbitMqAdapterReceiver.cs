@@ -134,7 +134,7 @@ namespace Orleans.Streams
                     g.Key.Channel,
                     g.Key.DeliveryTag,
                     // First is safe because and all messages in the same group will have the same value.
-                    RequeueOnFailure = g.First(m => m.RequeueOnFailure)
+                    g.First().RequeueOnFailure
                 });
 
             var incompletelyDeliveredGroups = groupsByDeliveryStatus[false];
@@ -143,7 +143,7 @@ namespace Orleans.Streams
             foreach (var group in incompletelyDeliveredGroups)
             {
                 if (_logger.IsEnabled(LogLevel.Debug)) _logger.LogDebug("MessagesDeliveredAsync NACK #{deliveryTag} Requeue: {requeue}", group.DeliveryTag, group.RequeueOnFailure);
-                await consumer.NackAsync(group.Channel, group.DeliveryTag, true);
+                await consumer.NackAsync(group.Channel, group.DeliveryTag, group.RequeueOnFailure);
             }
 
             var fullyDeliveredGroups = groupsByDeliveryStatus[true];
