@@ -53,10 +53,9 @@ namespace RabbitMqStreamTests
     {
         public static ILoggingBuilder AddTestDebugLogging(this ILoggingBuilder builder)
         {
-            return builder.ClearProviders()
+            return builder
                     .SetMinimumLevel(LogLevel.Information)
                     .AddFilter("Orleans.Streams", LogLevel.Debug)
-                    .AddConsole()
                     .AddDebug();
         }
     }
