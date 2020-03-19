@@ -8,9 +8,12 @@ namespace RabbitMqStreamTests
 {
     internal static class ToxiProxyHelpers
     {
+        public const string RmqPortEnvVar = "RMQ_PORT";
+        public const string ProxyPortEnvVar = "RMQ_TOXI_PORT";
         private const string RmqProxyName = "RMQ";
-        private const int RmqPort = 5672;
-        private const int RmqProxyPort = 56720;
+
+        public static readonly int RmqPort = int.TryParse(Environment.GetEnvironmentVariable(RmqPortEnvVar), out var port) ? port : 5672;
+        public static readonly int RmqProxyPort = int.TryParse(Environment.GetEnvironmentVariable(ProxyPortEnvVar), out var port) ? port : 5670;
         public static int ClientPort => CanRunProxy ? RmqProxyPort : RmqPort;
 
         public static bool CanRunProxy => RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && RuntimeInformation.OSArchitecture == Architecture.X64;

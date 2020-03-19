@@ -18,7 +18,7 @@ namespace RabbitMqStreamTests
             {
                 HostName = "localhost",
                 VirtualHost = "/",
-                Port = 5672,
+                Port = ToxiProxyHelpers.ClientPort,
                 UserName = "guest",
                 Password = "guest"
             };
@@ -46,7 +46,7 @@ namespace RabbitMqStreamTests
             {
                 HostName = "localhost",
                 VirtualHost = "/",
-                Port = 5672,
+                Port = ToxiProxyHelpers.ClientPort,
                 UserName = "guest",
                 Password = "guest"
             };
