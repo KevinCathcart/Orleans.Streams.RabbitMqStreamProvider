@@ -1,0 +1,19 @@
+version: '3.2'
+services:
+    rabbitmq:
+        image: rabbitmq:3-management-alpine
+        container_name: rabbitmq
+        ports:
+            - ${RMQ_PORT}:5672
+            - ${RMQ_MANAGEMENT_PORT}:15672
+    toxiproxy:
+        image: shopify/toxiproxy
+        container_name: toxiproxy
+        command: -config /config/toxiproxy.json -host 0.0.0.0
+        ports:
+            - 8474:8474
+            - ${RMQ_TOXI_PORT}:5670
+        volumes:
+          - type: bind
+            source: ./toxiproxy.json
+            target: /config/toxiproxy.json

@@ -155,7 +155,7 @@ namespace RabbitMqStreamTests
         {
             if(!CanRunProxy)
             {
-                Assert.Ignore("Resiliency tests not enabled on this platform");
+                Assert.Ignore($"To run this test on this platform, you must run `docker-compose -f .docker/test-services.yml` and set the `${ProxyPortEnvVar}` and `${RmqPortEnvVar}` environment variables correctly.");
             }
             // ToxiProxy
             _proxyProcess = StartProxy();

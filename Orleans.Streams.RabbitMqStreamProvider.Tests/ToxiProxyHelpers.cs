@@ -16,11 +16,15 @@ namespace RabbitMqStreamTests
         public static readonly int RmqProxyPort = int.TryParse(Environment.GetEnvironmentVariable(ProxyPortEnvVar), out var port) ? port : 5670;
         public static int ClientPort => CanRunProxy ? RmqProxyPort : RmqPort;
 
-        public static bool CanRunProxy => RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && RuntimeInformation.OSArchitecture == Architecture.X64;
+        public static bool UseDockerProxy => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(ProxyPortEnvVar));
+
+        public static bool CanRunProxy => CanStartProxy;
+
+        public static bool CanStartProxy => RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && RuntimeInformation.OSArchitecture == Architecture.X64;
 
         public static Process StartProxy()
         {
-            if (!CanRunProxy) return null;
+            if (UseDockerProxy || !CanStartProxy) return null;
 
             StopProxyIfRunning();
 
