@@ -54,7 +54,7 @@ which you can run all channel operations.
 ## Configuration
 
 Example configuration:
-```
+```csharp
 var silo = new SiloHostBuilder()
     .UseLocalhostClustering()
     .AddMemoryGrainStorage("PubSubStore")
