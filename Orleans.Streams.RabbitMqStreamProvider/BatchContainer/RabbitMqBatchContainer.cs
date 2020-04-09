@@ -17,11 +17,11 @@ namespace Orleans.Streams.BatchContainer
         public Guid StreamGuid { get; }
         public string StreamNamespace { get; }
 
-        public RabbitMqBatchContainer(Guid streamGuid, string streamNamespace, List<object> events, Dictionary<string, object> requestContext)
+        public RabbitMqBatchContainer(Guid streamGuid, string streamNamespace, IEnumerable<object> events, Dictionary<string, object> requestContext = null)
         {
             StreamGuid = streamGuid;
             StreamNamespace = streamNamespace;
-            _events = events;
+            _events = events.ToList();
             _requestContext = requestContext;
         }
 
