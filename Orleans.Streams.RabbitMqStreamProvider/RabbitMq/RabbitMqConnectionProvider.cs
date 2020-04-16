@@ -18,6 +18,12 @@ namespace Orleans.Streams.RabbitMq
         {
             _options = options;
             Logger = logger;
+
+            _options.Connection.AutomaticRecoveryEnabled = false;
+
+            // Force UseBackgroundThreadsForIO to be true if it exists. Using reflection, because I expect this property will get removed in a future version of the
+            // rabbitmq Client, since it already does nothing in the v6.0 prerelease, and I don't want this provider to break just because of that.
+            _options.Connection.GetType().GetProperty("UseBackgroundThreadsForIO")?.SetValue(_options.Connection, true);
         }
 
         public IConnection Connection
@@ -38,7 +44,6 @@ namespace Orleans.Streams.RabbitMq
                     if (_connection?.IsOpen != true)
                     {
                         Logger.LogDebug("Opening a new RMQ connection...");
-                        _options.Connection.AutomaticRecoveryEnabled = false;
 
                         _connection = _options.Connection.CreateConnection(_options.ConnectionName);
                         Logger.LogDebug("Connection created.");
