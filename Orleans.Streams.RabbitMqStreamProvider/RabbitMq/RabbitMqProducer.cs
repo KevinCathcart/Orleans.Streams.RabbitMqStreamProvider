@@ -81,6 +81,15 @@ namespace Orleans.Streams.RabbitMq
             }
         }
 
+        public Task DeclareExchange(string exchangeName)
+        {
+            return _connection.RunOnScheduler(() =>
+            {
+                var channel = _connection.Channel;
+                _declarationHelper.DeclareExchange(exchangeName, channel);
+            });
+        }
+
         public void Dispose()
         {
             // Deliberate fire and forget. We are dispatching Dispose on the connection's

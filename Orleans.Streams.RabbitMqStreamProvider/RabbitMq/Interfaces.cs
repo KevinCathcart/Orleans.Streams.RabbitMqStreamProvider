@@ -37,6 +37,7 @@ namespace Orleans.Streams.RabbitMq
     public interface IRabbitMqProducer : IDisposable
     {
         Task SendAsync(RabbitMqMessage message);
+        Task DeclareExchange(string exchangeName);
     }
 
     public interface ITopologyProvider
