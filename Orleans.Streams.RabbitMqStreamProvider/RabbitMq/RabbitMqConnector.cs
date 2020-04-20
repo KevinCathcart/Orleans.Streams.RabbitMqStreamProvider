@@ -88,7 +88,7 @@ namespace Orleans.Streams.RabbitMq
         }
     }
 
-    static class RabbitMqConnectorExtensions
+    public static class RabbitMqConnectorExtensions
     {
         public static Task RunOnScheduler(this IRabbitMqConnector connector, Action action)
         {
