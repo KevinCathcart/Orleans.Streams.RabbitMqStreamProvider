@@ -96,6 +96,11 @@ namespace Orleans.Streams.RabbitMq
                 // we call EnsureChannelAvailable, to ensure the channel is open.
                 await _connection.RunOnScheduler(state => ((IRabbitMqConnector)state).EnsureChannelAvailable(), _connection);
             }
+            else
+            {
+                //Force asynchronous completion, since otherwise too much code in the pulling agent can end up running synchronously
+                await Task.Yield();
+            }
             return result;
         }
 
