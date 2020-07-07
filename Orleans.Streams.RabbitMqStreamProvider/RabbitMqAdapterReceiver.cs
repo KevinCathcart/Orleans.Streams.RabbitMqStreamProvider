@@ -69,7 +69,8 @@ namespace Orleans.Streams
                 IEnumerable<IBatchContainer> batches;
                 try
                 {
-                    batches =_dataAdapter.FromQueueMessage(item, _sequenceId++);
+                    batches =_dataAdapter.FromQueueMessage(item, _sequenceId++).ToList();
+                    _sequenceId = batches.LastOrDefault()?.SequenceToken?.SequenceNumber ?? _sequenceId;
                 }
                 catch (Exception ex)
                 {
@@ -79,9 +80,9 @@ namespace Orleans.Streams
                 }
 
                 // Filter out any decoded batches whose streams that do not belong to the queue. (Can happen with custom data adapters,
-                // and unusual typologies. If it does we don't want to try to deliver those because those messages should also appear
+                // and unusual topologies. If it does we don't want to try to deliver those because those messages should also appear
                 // in the correct queue, and thus would get needlessly double delivered.)
-                var filteredBatches = batches.Where(b => _mapper.GetQueueForStream(b.StreamGuid, b.StreamNamespace) == _queueId).ToList();
+                var filteredBatches = batches.Where(b => _mapper.GetQueueForStream(b.StreamGuid, b.StreamNamespace).Equals(_queueId)).ToList();
 
                 if (filteredBatches.Count == 0)
                 {

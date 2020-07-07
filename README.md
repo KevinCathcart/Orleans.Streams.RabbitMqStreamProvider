@@ -1,13 +1,20 @@
 # Orleans.Streams.RabbitMqStreamProvider
 Orleans persistent stream provider for RabbitMQ. This provider is reliable by
-default, thus ACKing messages only after they are processed by a consumer.
+default, thus:
+* it ACKs messages only after they are processed by a consumer,
+* it uses durable queues
+* it uses persistent messages
+* it waits for publisher confirms (asynchronously, to avoid loss of throughput)
 
 ## Replaceable Components
 
 By replacing the Data Adapter, this provider supports mapping an Orleans
 message to an arbitrary RabbitMQ message, and mapping a RabbitMq message to
 arbitrary batches of Orleans messages. (One RabbitMQ message can be converted
-to messages on multiple different virtual streams.)
+to messages on multiple different virtual streams.) When returning multiple 
+batches, make sure to increment the sequence number and create a new sequence token
+for each batch. 
+
 
 This is especially useful for consuming messages that came from a non-Orleans
 source, or sending messages that will be consumed by a non-Orleans application.
