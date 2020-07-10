@@ -55,21 +55,21 @@ namespace Orleans.Streams
 
     public class RabbitMqDataAdapter: RabbitMqDataAdapterBase
     {
-        private readonly SerializationManager _serializatonManager;
+        private readonly SerializationManager _serializationManager;
 
         public RabbitMqDataAdapter(SerializationManager serializationManager, IStreamQueueMapper mapper, ITopologyProvider topologyProvider) :base(mapper, topologyProvider)
         {
-            _serializatonManager = serializationManager;
+            _serializationManager = serializationManager;
         }
 
         protected override byte[] Serialize(RabbitMqBatchContainer container)
         {
-            return _serializatonManager.SerializeToByteArray(container);
+            return _serializationManager.SerializeToByteArray(container);
         }
 
         protected override RabbitMqBatchContainer Deserialize(byte[] data)
         {
-            return _serializatonManager.DeserializeFromByteArray<RabbitMqBatchContainer>(data);
+            return _serializationManager.DeserializeFromByteArray<RabbitMqBatchContainer>(data);
         }
 
         internal static RabbitMqDataAdapter Create(IServiceProvider services, string name)
