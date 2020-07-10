@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Orleans.Configuration;
 using Orleans.Streams.RabbitMq;
 
 namespace Orleans.Streams
@@ -14,12 +15,13 @@ namespace Orleans.Streams
         private readonly IStreamQueueMapper _mapper;
         private readonly IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> _dataAdapter;
         private readonly ILogger _logger;
+        private readonly RabbitMqOptions _rmqOptions;
         private long _sequenceId;
         private IRabbitMqConsumer _consumer;
-        private readonly List<PendingDelivery> pending;
+        private readonly List<PendingDelivery> _pending;
         private Queue<IBatchContainer> _currentGroup;
 
-        public RabbitMqAdapterReceiver(IRabbitMqConnectorFactory rmqConnectorFactory, QueueId queueId, IStreamQueueMapper mapper, IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> dataAdapter)
+        public RabbitMqAdapterReceiver(IRabbitMqConnectorFactory rmqConnectorFactory, QueueId queueId, IStreamQueueMapper mapper, IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> dataAdapter, RabbitMqOptions rmqOptions)
         {
             _rmqConnectorFactory = rmqConnectorFactory;
             _queueId = queueId;
@@ -27,8 +29,9 @@ namespace Orleans.Streams
             _dataAdapter = dataAdapter;
             _logger = _rmqConnectorFactory.LoggerFactory.CreateLogger($"{typeof(RabbitMqAdapterReceiver).FullName}.{queueId}");
             _sequenceId = 0;
-            pending = new List<PendingDelivery>();
+            _pending = new List<PendingDelivery>();
             _currentGroup = new Queue<IBatchContainer>();
+            _rmqOptions = rmqOptions;
         }
 
         public Task Initialize(TimeSpan timeout)
@@ -66,7 +69,7 @@ namespace Orleans.Streams
                 var item = await consumer.ReceiveAsync();
                 if (item == null) return false;
 
-                IEnumerable<IBatchContainer> batches;
+                List<IBatchContainer> batches;
                 try
                 {
                     batches =_dataAdapter.FromQueueMessage(item, _sequenceId++).ToList();
@@ -79,25 +82,33 @@ namespace Orleans.Streams
                     continue;
                 }
 
-                // Filter out any decoded batches whose streams that do not belong to the queue. (Can happen with custom data adapters,
-                // and unusual topologies. If it does we don't want to try to deliver those because those messages should also appear
-                // in the correct queue, and thus would get needlessly double delivered.)
-                var filteredBatches = batches.Where(b => _mapper.GetQueueForStream(b.StreamGuid, b.StreamNamespace).Equals(_queueId)).ToList();
+                if (_rmqOptions.RequireMatchingQueue)
+                {
+                    // Filter out any decoded batches whose streams that do not belong to the queue. (Can happen with custom data adapters,
+                    // and unusual topologies. If it does we don't want to try to deliver those because those messages should also appear
+                    // in the correct queue, and thus would get needlessly double delivered.)
 
-                if (filteredBatches.Count == 0)
+                    // This is optional because for some topologies (like those using x-consistent-hash or x-modulus-hash), orleans will
+                    // not know which queue to expect a message on, and therefore cannot filter, and must rely on the topology
+                    // ensuring no needless duplicates.
+
+                    batches = batches.Where(b => _mapper.GetQueueForStream(b.StreamGuid, b.StreamNamespace).Equals(_queueId)).ToList();
+                }
+
+                if (batches.Count == 0)
                 {
                     // If a RabbitMQ message maps to zero Orleans messages, then we can acknowledge it immediately.
                     await consumer.AckAsync(item.Channel, item.DeliveryTag, multiple: false);
                 }
                 else
                 {
-                    foreach (var batch in filteredBatches)
+                    foreach (var batch in batches)
                     {
-                        pending.Add(new PendingDelivery(batch.SequenceToken, item.DeliveryTag, item.Channel, item.RequeueOnFailure));
+                        _pending.Add(new PendingDelivery(batch.SequenceToken, item.DeliveryTag, item.Channel, item.RequeueOnFailure));
                     }
                 }
 
-                _currentGroup = new Queue<IBatchContainer>(filteredBatches);
+                _currentGroup = new Queue<IBatchContainer>(batches);
             }
 
             return true;
@@ -119,12 +130,12 @@ namespace Orleans.Streams
             }
 
             // finalize all pending messages at or before the newest
-            List<PendingDelivery> finalizedDeliveries = pending
+            List<PendingDelivery> finalizedDeliveries = _pending
                 .Where(pendingDelivery => !pendingDelivery.Token.Newer(newest))
                 .ToList();
 
             // remove all finalized deliveries from pending, regardless of if it was delivered or not.
-            pending.RemoveRange(0, finalizedDeliveries.Count);
+            _pending.RemoveRange(0, finalizedDeliveries.Count);
 
             var groups = finalizedDeliveries.GroupBy(x => new { x.Channel, x.DeliveryTag});
 
@@ -165,18 +176,18 @@ namespace Orleans.Streams
         {
             // If newest is part of a group of batches that came from a single rabbit message and not all of them have tokens <= newest,
             // then adjust newest to be largest value not part of that group.
-            PendingDelivery top = pending.First(m => m.Token == newest);
-            List<PendingDelivery> topGroup = pending.Where(m => m.Channel == top.Channel && m.DeliveryTag == top.DeliveryTag).ToList();
+            PendingDelivery top = _pending.First(m => m.Token == newest);
+            List<PendingDelivery> topGroup = _pending.Where(m => m.Channel == top.Channel && m.DeliveryTag == top.DeliveryTag).ToList();
             if (topGroup.Any(x => x.Token.Newer(newest)))
             {
-                var remainder = pending.Where(x => !x.Token.Newer(newest)).Where(x => !topGroup.Contains(x)).ToList();
+                var remainder = _pending.Where(x => !x.Token.Newer(newest)).Where(x => !topGroup.Contains(x)).ToList();
                 if (!remainder.Any())
                 {
                     // If topGroup is the only group with tokens <= newest, remove any delivered messages from
                     // pending, and return early. (We need to keep any unsuccessfully delivered messages so that we can
                     // Nack the group once it is finished).
                     var delivered = topGroup.Where(msg => deliveredTokens.Contains(msg.Token)).ToList();
-                    pending.RemoveAll(delivered.Contains);
+                    _pending.RemoveAll(delivered.Contains);
                     return null;
                 }
                 newest = topGroup.Max(x => x.Token);

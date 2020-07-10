@@ -22,6 +22,7 @@ namespace Orleans.Streams
         private readonly IStreamQueueMapper _mapper;
         private readonly ThreadLocal<IRabbitMqProducer> _producer; 
         private readonly IRabbitMqConnectorFactory _rmqConnectorFactory;
+        private readonly RabbitMqOptions _rmqOptions;
 
         public RabbitMqAdapter(RabbitMqOptions rmqOptions, IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> dataAdapter, string providerName, IStreamQueueMapper mapper, IRabbitMqConnectorFactory rmqConnectorFactory)
         {
@@ -29,14 +30,14 @@ namespace Orleans.Streams
             Name = providerName;
             _mapper = mapper;
             _rmqConnectorFactory = rmqConnectorFactory;
-            Direction = rmqOptions.Direction;
+            _rmqOptions = rmqOptions;
             _producer = new ThreadLocal<IRabbitMqProducer>(() => _rmqConnectorFactory.CreateProducer());
         }
 
         public string Name { get; }
         public bool IsRewindable => false;
-        public StreamProviderDirection Direction { get; }
-        public IQueueAdapterReceiver CreateReceiver(QueueId queueId) => new RabbitMqAdapterReceiver(_rmqConnectorFactory, queueId, _mapper, _dataAdapter);
+        public StreamProviderDirection Direction => _rmqOptions.Direction;
+        public IQueueAdapterReceiver CreateReceiver(QueueId queueId) => new RabbitMqAdapterReceiver(_rmqConnectorFactory, queueId, _mapper, _dataAdapter, _rmqOptions);
 
         public async Task QueueMessageBatchAsync<T>(Guid streamGuid, string streamNamespace, IEnumerable<T> events, StreamSequenceToken token, Dictionary<string, object> requestContext)
         {

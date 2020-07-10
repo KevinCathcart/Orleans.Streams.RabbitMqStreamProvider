@@ -15,6 +15,8 @@ namespace Orleans.Configuration
         public string ConnectionName { get; set; }
         public StreamProviderDirection Direction { get; set; } = StreamProviderDirection.ReadWrite;
 
+        public bool RequireMatchingQueue { get; set; } = true;
+
         public const bool DefaultUseQueuePartitioning = true;
         public const int DefaultNumberOfQueues = 8;
     }

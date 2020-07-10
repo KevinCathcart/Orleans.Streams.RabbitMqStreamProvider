@@ -54,6 +54,7 @@ namespace Orleans.Streams.RabbitMq
         public static readonly RabbitMqExchangeType JMSTopic = new RabbitMqExchangeType("x-jms-topic");
         public static readonly RabbitMqExchangeType LastValueCaching = new RabbitMqExchangeType("x-lvc");
         public static readonly RabbitMqExchangeType Management = new RabbitMqExchangeType("x-management");
+        public static readonly RabbitMqExchangeType ModulusHash = new RabbitMqExchangeType("x-modulus-hash"); //part of sharding plugin
         public static readonly RabbitMqExchangeType Random = new RabbitMqExchangeType("x-random");
         public static readonly RabbitMqExchangeType RecentHistory = new RabbitMqExchangeType("x-recent-history");
         public static readonly RabbitMqExchangeType ReverseTopic = new RabbitMqExchangeType("x-rtopic");
