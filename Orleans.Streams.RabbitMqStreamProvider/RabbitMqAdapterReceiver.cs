@@ -72,7 +72,7 @@ namespace Orleans.Streams
                 List<IBatchContainer> batches;
                 try
                 {
-                    batches =_dataAdapter.FromQueueMessage(item, _sequenceId++).ToList();
+                    batches =_dataAdapter.FromQueueMessage(item, ++_sequenceId).ToList();
                     _sequenceId = batches.LastOrDefault()?.SequenceToken?.SequenceNumber ?? _sequenceId;
                 }
                 catch (Exception ex)
