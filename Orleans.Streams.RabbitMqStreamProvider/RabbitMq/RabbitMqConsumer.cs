@@ -109,7 +109,7 @@ namespace Orleans.Streams.RabbitMq
             return new RabbitMqMessage
             {
                 AppId = result.BasicProperties.AppId,
-                Body = result.Body,
+                Body = result.Body.ToArray(),
                 Channel = channel,
                 ClusterId = result.BasicProperties.ClusterId,
                 ContentEncoding = result.BasicProperties.ContentEncoding,
