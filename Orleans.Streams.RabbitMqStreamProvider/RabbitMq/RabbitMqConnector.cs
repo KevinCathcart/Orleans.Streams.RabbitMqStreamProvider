@@ -36,6 +36,7 @@ namespace Orleans.Streams.RabbitMq
 
         private bool _disposed;
         private IModel _channel;
+        private bool _recyclable = false;
 
         public event EventHandler<ModelCreatedEventArgs> ModelCreated;
 
@@ -86,9 +87,10 @@ namespace Orleans.Streams.RabbitMq
             });
         }
 
-        public RabbitMqConnector(RabbitMqConnectionProvider connectionProvider, ILogger logger)
+        public RabbitMqConnector(RabbitMqConnectionProvider connectionProvider, bool recyclable, ILogger logger)
         {
             _connectionProvider = connectionProvider;
+            _recyclable = recyclable;
             Logger = logger;
             Scheduler = new ConcurrentExclusiveSchedulerPair().ExclusiveScheduler;
         }
@@ -120,7 +122,8 @@ namespace Orleans.Streams.RabbitMq
                 _channel.ConfirmSelect();   // manual (N)ACK
                 Logger.LogDebug("Model created.");
             }
-            _activityChannel.Writer.TryWrite(this);
+            if(_recyclable)
+                _activityChannel.Writer.TryWrite(this);
         }
 
         public event EventHandler<BasicAckEventArgs> BasicAcks;
