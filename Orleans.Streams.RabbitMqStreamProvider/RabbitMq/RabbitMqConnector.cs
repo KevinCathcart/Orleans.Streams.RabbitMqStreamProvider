@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Threading;
+using System.Collections.Concurrent;
 using System.Threading.Tasks;
+using System.Threading.Channels;
+using System.Collections.Specialized;
+
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -20,6 +24,13 @@ namespace Orleans.Streams.RabbitMq
 
     internal class RabbitMqConnector : IRabbitMqConnector
     {
+        // Least recently used 
+        static readonly Channel<RabbitMqConnector> _activityChannel = System.Threading.Channels.Channel.CreateUnbounded<RabbitMqConnector>(new UnboundedChannelOptions()
+        {
+            SingleReader = true,
+            SingleWriter = false,
+        });
+
         public ILogger Logger { get; }
         private readonly RabbitMqConnectionProvider _connectionProvider;
 
@@ -38,6 +49,42 @@ namespace Orleans.Streams.RabbitMq
         }
 
         public TaskScheduler Scheduler { get; }
+
+        static RabbitMqConnector()
+        {
+            Task.Run(async () =>
+            {
+                var reader = _activityChannel.Reader;
+                OrderedDictionary lruMap = new OrderedDictionary();
+                while(await reader.WaitToReadAsync())
+                {
+                    while(reader.TryRead(out RabbitMqConnector instance))
+                    {
+                        lruMap[instance] = instance; // the instance will be added in the front of queue
+                    }
+
+                    // now remove the exceeding part, least used recently
+                    while(lruMap.Count > 100 /* max number of channels */)
+                    {
+                        RabbitMqConnector last = lruMap[lruMap.Count - 1] as RabbitMqConnector;
+                        lruMap.RemoveAt(lruMap.Count - 1);
+                        if(last != null)
+                        {
+                            await last.RunOnScheduler((obj) =>
+                            {
+                                RabbitMqConnector instance = obj as RabbitMqConnector;
+                                if(instance != null)
+                                {
+                                    IModel c = instance._channel;
+                                    instance._channel = null;
+                                    try { c?.Dispose(); } catch { }
+                                }
+                            }, last);
+                        }
+                    }
+                }
+            });
+        }
 
         public RabbitMqConnector(RabbitMqConnectionProvider connectionProvider, ILogger logger)
         {
@@ -73,6 +120,7 @@ namespace Orleans.Streams.RabbitMq
                 _channel.ConfirmSelect();   // manual (N)ACK
                 Logger.LogDebug("Model created.");
             }
+            _activityChannel.Writer.TryWrite(this);
         }
 
         public event EventHandler<BasicAckEventArgs> BasicAcks;
