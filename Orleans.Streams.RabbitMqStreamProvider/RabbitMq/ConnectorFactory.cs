@@ -20,16 +20,16 @@ namespace Orleans.Streams.RabbitMq
         public ILoggerFactory LoggerFactory { get; }
 
         public IRabbitMqConsumer CreateConsumer(QueueId queueId)
-            => new RabbitMqConsumer(CreateConnector(recyclable: false, LoggerFactory.CreateLogger($"{typeof(RabbitMqConsumer).FullName}.{queueId}")), _topologyProvider.GetNameForQueue(queueId), _topologyProvider);
+            => new RabbitMqConsumer(CreateConnector(LoggerFactory.CreateLogger($"{typeof(RabbitMqConsumer).FullName}.{queueId}")), _topologyProvider.GetNameForQueue(queueId), _topologyProvider);
 
         public IRabbitMqProducer CreateProducer()
-            => new RabbitMqProducer(CreateConnector(recyclable: true, LoggerFactory.CreateLogger<RabbitMqProducer>()), _topologyProvider);
+            => new RabbitMqProducer(CreateConnector(LoggerFactory.CreateLogger<RabbitMqProducer>()), _topologyProvider);
 
         public IRabbitMqConnector CreateGenericConnector(string name)
-            => CreateConnector(recyclable : false, LoggerFactory.CreateLogger($"{typeof(RabbitMqConnector)}.{name}"));
+            => CreateConnector(LoggerFactory.CreateLogger($"{typeof(RabbitMqConnector)}.{name}"));
 
-        private IRabbitMqConnector CreateConnector(bool recyclable, ILogger logger)
-            => new RabbitMqConnector(_connectionProvider, recyclable, logger);
+        private IRabbitMqConnector CreateConnector(ILogger logger)
+            => new RabbitMqConnector(_connectionProvider, logger);
 
         internal static IRabbitMqConnectorFactory Create(IServiceProvider services, string name)
         {

@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using System.Threading.Channels;
 using Orleans.Configuration;
 using Orleans.Streams.RabbitMq;
+
+using ThreadSafeChannel = System.Threading.Channels.Channel;
 
 namespace Orleans.Streams
 {
@@ -24,6 +26,12 @@ namespace Orleans.Streams
         private readonly IRabbitMqConnectorFactory _rmqConnectorFactory;
         private readonly RabbitMqOptions _rmqOptions;
 
+        private readonly Channel<Func<IRabbitMqProducer, Task>> _chTask = ThreadSafeChannel.CreateUnbounded<Func<IRabbitMqProducer, Task>>(new UnboundedChannelOptions()
+        {
+            SingleReader = false,
+            SingleWriter = false,
+        });
+
         public RabbitMqAdapter(RabbitMqOptions rmqOptions, IQueueDataAdapter<RabbitMqMessage, IEnumerable<IBatchContainer>> dataAdapter, string providerName, IStreamQueueMapper mapper, IRabbitMqConnectorFactory rmqConnectorFactory)
         {
             _dataAdapter = dataAdapter;
@@ -32,6 +40,11 @@ namespace Orleans.Streams
             _rmqConnectorFactory = rmqConnectorFactory;
             _rmqOptions = rmqOptions;
             _producer = new ThreadLocal<IRabbitMqProducer>(() => _rmqConnectorFactory.CreateProducer());
+
+            for( int i = 0; i < Math.Max(Environment.ProcessorCount / 2, 1); i++)
+            {
+                Task.Run(Runner);
+            }
         }
 
         public string Name { get; }
@@ -39,13 +52,45 @@ namespace Orleans.Streams
         public StreamProviderDirection Direction => _rmqOptions.Direction;
         public IQueueAdapterReceiver CreateReceiver(QueueId queueId) => new RabbitMqAdapterReceiver(_rmqConnectorFactory, queueId, _mapper, _dataAdapter, _rmqOptions);
 
-        public async Task QueueMessageBatchAsync<T>(Guid streamGuid, string streamNamespace, IEnumerable<T> events, StreamSequenceToken token, Dictionary<string, object> requestContext)
+        public Task QueueMessageBatchAsync<T>(Guid streamGuid, string streamNamespace, IEnumerable<T> events, StreamSequenceToken token, Dictionary<string, object> requestContext)
         {
             if (token != null) throw new ArgumentException("RabbitMq stream provider does not support non-null StreamSequenceToken.", nameof(token));
 
             RabbitMqMessage message = _dataAdapter.ToQueueMessage(streamGuid, streamNamespace, events, token, requestContext);
 
-            await _producer.Value.SendAsync(message);
+            TaskCompletionSource<object> tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _chTask.Writer.TryWrite(async (producer) =>
+            {
+                try
+                {
+                    await producer.SendAsync(message);
+                    tcs.SetResult(null);
+                }
+                catch(Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            });
+            return tcs.Task;
+        }
+
+        private async Task Runner()
+        {
+            var reader = _chTask.Reader;
+
+            while (await reader.WaitToReadAsync())
+            {
+                while (reader.TryRead(out Func<IRabbitMqProducer, Task> cb))
+                {
+                    try
+                    {
+                        await cb(_producer.Value);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
         }
     }
 }
