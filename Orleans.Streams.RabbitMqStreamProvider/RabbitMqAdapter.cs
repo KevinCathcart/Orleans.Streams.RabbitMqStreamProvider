@@ -77,14 +77,14 @@ namespace Orleans.Streams
         private async Task Runner()
         {
             var reader = _chTask.Reader;
-
+            var producer = _producer.Value;
             while (await reader.WaitToReadAsync())
             {
                 while (reader.TryRead(out Func<IRabbitMqProducer, Task> cb))
                 {
                     try
                     {
-                        await cb(_producer.Value);
+                        await cb(producer);
                     }
                     catch
                     {
