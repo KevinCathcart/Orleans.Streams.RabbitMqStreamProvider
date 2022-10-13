@@ -46,6 +46,11 @@ namespace Orleans.Streams.RabbitMq
             Scheduler = new ConcurrentExclusiveSchedulerPair().ExclusiveScheduler;
         }
 
+        ~RabbitMqConnector()
+        {
+            Dispose();
+        }
+
         public void EnsureChannelAvailable()
         {
             if (_disposed)
@@ -55,6 +60,8 @@ namespace Orleans.Streams.RabbitMq
             }
             if (_channel?.IsOpen != true)
             {
+                try { _channel?.Dispose(); } catch { }
+
                 Logger.LogDebug("Creating a model.");
 
                 _channel = _connectionProvider.Connection.CreateModel();
@@ -80,6 +87,7 @@ namespace Orleans.Streams.RabbitMq
                     _channel.Close();
                     _disposed = true;
                 }
+                try { _channel?.Dispose(); } catch { }
             }
             catch (Exception ex)
             {
